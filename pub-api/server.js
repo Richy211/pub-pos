@@ -11,20 +11,39 @@ app.get("/", (req,res)=>{
  res.send("API funcionando")
 })
 
-app.get("/tables",(req,res)=>{
+/* ===============================
+   OBTENER MESAS + TOTAL
+================================ */
+app.get("/tables", (req, res) => {
 
- db.query("SELECT * FROM tables",(err,result)=>{
+ const sql = `
+  SELECT 
+   t.id,
+   t.number,
+   t.status,
+   IFNULL(SUM(oi.qty * p.price),0) AS total
+  FROM tables t
+  LEFT JOIN orders o ON o.table_id = t.id AND o.status='open'
+  LEFT JOIN order_items oi ON oi.order_id = o.id
+  LEFT JOIN products p ON p.id = oi.product_id
+  GROUP BY t.id
+ `
+
+ db.query(sql,(err,result)=>{
 
   if(err){
-   res.send(err)
-  }else{
-   res.json(result)
+   return res.status(500).json(err)
   }
+
+  res.json(result)
 
  })
 
 })
 
+/* ===============================
+   OBTENER / CREAR ORDEN
+================================ */
 app.get("/order/:tableId",(req,res)=>{
 
  const tableId = req.params.tableId
@@ -43,7 +62,7 @@ app.get("/order/:tableId",(req,res)=>{
    }
 
    db.query(
-    "INSERT INTO orders (table_id) VALUES (?)",
+    "INSERT INTO orders (table_id,status) VALUES (?, 'open')",
     [tableId],
     (err,insertResult)=>{
 
@@ -53,15 +72,20 @@ app.get("/order/:tableId",(req,res)=>{
 
      res.json({
       id: insertResult.insertId,
-      table_id: tableId
+      table_id: tableId,
+      status: "open"
      })
 
     }
    )
 
  })
+
 })
 
+/* ===============================
+   LISTAR PRODUCTOS
+================================ */
 app.get("/products",(req,res)=>{
 
  db.query("SELECT * FROM products",(err,result)=>{
@@ -76,6 +100,9 @@ app.get("/products",(req,res)=>{
 
 })
 
+/* ===============================
+   AGREGAR PRODUCTO AL PEDIDO
+================================ */
 app.post("/order-item",(req,res)=>{
 
  const {order_id, product_id} = req.body
@@ -89,6 +116,18 @@ app.post("/order-item",(req,res)=>{
     return res.send(err)
    }
 
+   /* MARCAR MESA COMO OCUPADA */
+   db.query(
+    `
+    UPDATE tables
+    SET status='occupied'
+    WHERE id = (
+      SELECT table_id FROM orders WHERE id=?
+    )
+    `,
+    [order_id]
+   )
+
    res.json({success:true})
 
   }
@@ -96,7 +135,9 @@ app.post("/order-item",(req,res)=>{
 
 })
 
-
+/* ===============================
+   ITEMS DEL PEDIDO
+================================ */
 app.get("/order-items/:orderId",(req,res)=>{
 
  const orderId = req.params.orderId

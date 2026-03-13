@@ -40,3 +40,50 @@
 .read-the-docs {
   color: #888;
 }
+
+.pos{
+ display:flex;
+ height:100vh;
+}
+
+.products{
+ width:60%;
+ display:grid;
+ grid-template-columns:repeat(4,1fr);
+ gap:15px;
+ padding:20px;
+}
+
+.product-btn{
+ padding:20px;
+ border:none;
+ border-radius:10px;
+ background:#222;
+ color:white;
+ cursor:pointer;
+ font-size:16px;
+}
+
+.product-btn:hover{
+ background:#444;
+}
+
+.order{
+ width:40%;
+ background:#f4f4f4;
+ padding:20px;
+}
+
+.order-item{
+ display:flex;
+ justify-content:space-between;
+ padding:10px 0;
+ border-bottom:1px solid #ddd;
+}
+
+.order-total{
+ font-size:24px;
+ font-weight:bold;
+ text-align:right;
+ margin-top:20px;
+}

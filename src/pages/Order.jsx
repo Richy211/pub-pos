@@ -24,6 +24,12 @@ export default function Order(){
 
  },[])
 
+ useEffect(()=>{
+  if(order){
+   loadItems()
+  }
+ },[order])
+
  const addProduct = (productId)=>{
 
   API.post("/order-item",{
@@ -41,12 +47,17 @@ export default function Order(){
   .then(res=>{
    setItems(res.data)
   })
-
 }
+
+ const total = items.reduce((acc,item)=>{
+  return acc + item.qty * item.price
+ },0)
+
 
  if(!order){
   return <p>Cargando...</p>
  }
+
 
  return(
 
@@ -61,10 +72,8 @@ export default function Order(){
       className="product-btn"
       onClick={()=>addProduct(p.id)}
      >
-
       <h3>{p.name}</h3>
       <p>${p.price}</p>
-
      </button>
 
     ))}
@@ -72,22 +81,24 @@ export default function Order(){
    </div>
 
    <div className="order">
-
-    
-
     <h2>Pedido Mesa {tableId}</h2>
 
      <p>Items cargados: {items.length}</p>
 
     {items.map((item,i)=>(
-  <div key={i}>
-   {item.qty}x {item.name} - ${item.price}
+
+  <div key={i} className="order-item">
+
+      <span>
+        {item.qty}x {item.name} - ${item.price}
+      </span>
+
   </div>
  ))}
-
+      <div className="order-total">
+      TOTAL: ${total}
+    </div>
    </div>
-
   </div>
-
  )
 }
