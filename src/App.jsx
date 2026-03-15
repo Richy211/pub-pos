@@ -6,7 +6,8 @@ import Order from "./pages/Order"
 function App() {
   return (
    <Routes>
-     <Route path="/" element={<Tables />} />
+    <Route path="/" element={<Tables />} /> 
+   <Route path="/tables" element={<Tables />} />
      <Route path="/order/:tableId" element={<Order />} />
    </Routes>
   )

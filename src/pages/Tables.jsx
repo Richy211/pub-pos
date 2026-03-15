@@ -20,49 +20,73 @@ export default function Tables(){
 
  }
 
- return(
-  <div style={{padding:"20px"}}>
+ const getColor = (table)=>{
 
-   <h2>Mesas del Pub</h2>
+  if(table.status === "free") return "#3bd16f"     // verde
+  if(table.total > 0) return "#ff5a5a"             // roja ocupada
+  return "#ffd166"                                 // amarilla
+ }
+
+ return(
+
+  <div style={{padding:"30px"}}>
+
+   <h1 style={{marginBottom:"20px"}}>
+    🍺 Mesas del Pub
+   </h1>
 
    <div style={{
     display:"grid",
-    gridTemplateColumns:"repeat(4, 160px)",
-    gap:"20px",
-    marginTop:"20px"
+    gridTemplateColumns:"repeat(auto-fill, 170px)",
+    gap:"20px"
    }}>
 
     {tables.map(table=>(
 
      <div
       key={table.id}
-      onClick={() => navigate(`/order/${table.id}`)}
+      onClick={()=>navigate(`/order/${table.id}`)}
       style={{
-       border:"1px solid #ccc",
-       padding:"15px",
-       textAlign:"center",
-       borderRadius:"12px",
-       background: table.status === "free" ? "#8aff8a" : "#ff8a8a",
+       height:"140px",
+       borderRadius:"14px",
+       background:getColor(table),
+       color:"#fff",
        cursor:"pointer",
-       boxShadow:"0 4px 10px rgba(0,0,0,0.1)"
+       display:"flex",
+       flexDirection:"column",
+       justifyContent:"center",
+       alignItems:"center",
+       fontWeight:"bold",
+       boxShadow:"0 6px 14px rgba(0,0,0,0.2)",
+       transition:"transform 0.2s"
       }}
+
+      onMouseEnter={e=> e.currentTarget.style.transform="scale(1.05)"}
+      onMouseLeave={e=> e.currentTarget.style.transform="scale(1)"}
      >
 
-      <h3>Mesa {table.number}</h3>
+      <div style={{fontSize:"26px"}}>
+       Mesa {table.number}
+      </div>
 
-      <p>
+      <div style={{marginTop:"8px", fontSize:"14px"}}>
+
        {table.status === "free"
         ? "Disponible"
         : "Ocupada"}
-      </p>
+
+      </div>
 
       {table.total > 0 && (
- <p style={{fontWeight:"bold"}}>
-  Total: ${table.total}
- </p>
-)}
 
-      {/* si luego agregamos total en backend se verá aquí */}
+       <div style={{
+        marginTop:"6px",
+        fontSize:"16px"
+       }}>
+        ${table.total}
+       </div>
+
+      )}
 
      </div>
 
@@ -71,5 +95,7 @@ export default function Tables(){
    </div>
 
   </div>
+
  )
+
 }

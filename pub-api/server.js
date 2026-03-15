@@ -1,20 +1,23 @@
 const express = require("express")
+const app = express()
+
 const cors = require("cors")
 const db = require("./config/db")
-
-const app = express()
 
 app.use(cors())
 app.use(express.json())
 
-app.get("/", (req,res)=>{
+/* ===============================
+   TEST API
+================================ */
+app.get("/",(req,res)=>{
  res.send("API funcionando")
 })
 
 /* ===============================
    OBTENER MESAS + TOTAL
 ================================ */
-app.get("/tables", (req, res) => {
+app.get("/tables",(req,res)=>{
 
  const sql = `
   SELECT 
@@ -42,7 +45,7 @@ app.get("/tables", (req, res) => {
 })
 
 /* ===============================
-   OBTENER / CREAR ORDEN
+   OBTENER ORDEN ABIERTA
 ================================ */
 app.get("/order/:tableId",(req,res)=>{
 
@@ -61,25 +64,36 @@ app.get("/order/:tableId",(req,res)=>{
     return res.json(result[0])
    }
 
-   db.query(
-    "INSERT INTO orders (table_id,status) VALUES (?, 'open')",
-    [tableId],
-    (err,insertResult)=>{
-
-     if(err){
-      return res.send(err)
-     }
-
-     res.json({
-      id: insertResult.insertId,
-      table_id: tableId,
-      status: "open"
-     })
-
-    }
-   )
+   res.json(null)
 
  })
+
+})
+
+/* ===============================
+   ABRIR MESA
+================================ */
+app.post("/open-order",(req,res)=>{
+
+ const {table_id} = req.body
+
+ db.query(
+  "INSERT INTO orders (table_id,status) VALUES (?, 'open')",
+  [table_id],
+  (err,result)=>{
+
+   if(err){
+    return res.send(err)
+   }
+
+   res.json({
+    id: result.insertId,
+    table_id,
+    status:"open"
+   })
+
+  }
+ )
 
 })
 
@@ -101,22 +115,21 @@ app.get("/products",(req,res)=>{
 })
 
 /* ===============================
-   AGREGAR PRODUCTO AL PEDIDO
+   AGREGAR PRODUCTO
 ================================ */
-app.post("/order-item",(req,res)=>{
+/* app.post("/order-item",(req,res)=>{
 
  const {order_id, product_id} = req.body
 
  db.query(
   "INSERT INTO order_items (order_id,product_id,qty) VALUES (?,?,1)",
   [order_id,product_id],
-  (err,result)=>{
+  (err)=>{
 
    if(err){
     return res.send(err)
    }
 
-   /* MARCAR MESA COMO OCUPADA */
    db.query(
     `
     UPDATE tables
@@ -133,6 +146,131 @@ app.post("/order-item",(req,res)=>{
   }
  )
 
+}) */
+
+app.post("/order-item",(req,res)=>{
+
+ const {order_id, product_id} = req.body
+
+ // primero verificar si el producto ya existe en el pedido
+ db.query(
+  "SELECT * FROM order_items WHERE order_id=? AND product_id=?",
+  [order_id,product_id],
+  (err,result)=>{
+
+   if(err){
+    return res.send(err)
+   }
+
+   // si ya existe -> aumentar cantidad
+   if(result.length > 0){
+
+    db.query(
+     "UPDATE order_items SET qty = qty + 1 WHERE order_id=? AND product_id=?",
+     [order_id,product_id],
+     (err)=>{
+      if(err){
+       return res.send(err)
+      }
+
+      res.json({success:true})
+     }
+    )
+
+   } else {
+
+    // si no existe -> insertar
+    db.query(
+     "INSERT INTO order_items (order_id,product_id,qty) VALUES (?,?,1)",
+     [order_id,product_id],
+     (err)=>{
+      if(err){
+       return res.send(err)
+      }
+
+      res.json({success:true})
+     }
+    )
+
+   }
+
+  }
+ )
+
+})
+
+
+/* ===============================
+   ELIMINAR ITEM DEL PEDIDO
+================================ */
+app.post("/remove-item",(req,res)=>{
+
+ const {order_item_id} = req.body
+
+ db.query(
+  "DELETE FROM order_items WHERE id=?",
+  [order_item_id],
+  (err)=>{
+
+   if(err){
+    return res.send(err)
+   }
+
+   res.json({success:true})
+
+  }
+ )
+
+})
+
+
+
+/* ===============================
+   PAGAR ORDEN
+================================ */
+app.post("/pay-order",(req,res)=>{
+
+ const {order_id} = req.body
+
+ db.query(
+  "SELECT table_id FROM orders WHERE id=?",
+  [order_id],
+  (err,result)=>{
+
+   if(err){
+    return res.send(err)
+   }
+
+   const table_id = result[0].table_id
+
+   db.query(
+    "UPDATE orders SET status='paid' WHERE id=?",
+    [order_id],
+    (err)=>{
+
+     if(err){
+      return res.send(err)
+     }
+
+     db.query(
+      "UPDATE tables SET status='free' WHERE id=?",
+      [table_id],
+      (err)=>{
+
+       if(err){
+        return res.send(err)
+       }
+
+       res.json({success:true})
+
+      }
+     )
+
+    }
+   )
+
+  }
+ )
 })
 
 /* ===============================
@@ -142,7 +280,8 @@ app.get("/order-items/:orderId",(req,res)=>{
 
  const orderId = req.params.orderId
 
- db.query(`
+ db.query(
+ `
   SELECT 
    order_items.id,
    products.name,
@@ -165,6 +304,9 @@ app.get("/order-items/:orderId",(req,res)=>{
 
 })
 
-app.listen(5000, ()=>{
+/* ===============================
+   SERVER
+================================ */
+app.listen(5000,()=>{
  console.log("Servidor corriendo en puerto 5000")
 })

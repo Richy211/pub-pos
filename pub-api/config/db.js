@@ -7,9 +7,9 @@ const db = mysql.createConnection({
  database: "pub-pos"
 })
 
-db.connect(err => {
+db.connect((err)=>{
  if(err){
-  console.log("Error conectando a MySQL", err)
+  console.log("Error DB:",err)
  }else{
   console.log("MySQL conectado")
  }
