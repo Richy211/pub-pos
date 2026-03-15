@@ -79,7 +79,7 @@ export default function Tables(){
       <div style={{marginTop:"8px", fontSize:"14px"}}>
 
        {table.total > 0
-        ? "Ocupada"
+        ?  "Ocupada"
         : "Disponible"}
 
       </div>
