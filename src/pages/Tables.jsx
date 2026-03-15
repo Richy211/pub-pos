@@ -9,6 +9,13 @@ export default function Tables(){
 
  useEffect(()=>{
   loadTables()
+
+  const interval = setInterval(()=>{
+   loadTables()
+  },2000)
+
+  return ()=>clearInterval(interval)
+
  },[])
 
  const loadTables = ()=>{
@@ -22,9 +29,9 @@ export default function Tables(){
 
  const getColor = (table)=>{
 
-  if(table.status === "free") return "#3bd16f"     // verde
-  if(table.total > 0) return "#ff5a5a"             // roja ocupada
-  return "#ffd166"                                 // amarilla
+  if(table.total > 0) return "#ff5a5a"   // roja ocupada
+  return "#3bd16f"                       // verde disponible
+
  }
 
  return(
@@ -71,9 +78,9 @@ export default function Tables(){
 
       <div style={{marginTop:"8px", fontSize:"14px"}}>
 
-       {table.status === "free"
-        ? "Disponible"
-        : "Ocupada"}
+       {table.total > 0
+        ? "Ocupada"
+        : "Disponible"}
 
       </div>
 
