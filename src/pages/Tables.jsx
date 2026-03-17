@@ -27,82 +27,117 @@ export default function Tables(){
 
  }
 
- const getColor = (table)=>{
+ return (
+  <div className="min-h-screen bg-gray-900 text-white p-6">
 
-  if(table.total > 0) return "#ff5a5a"   // roja ocupada
-  return "#3bd16f"                       // verde disponible
+      {/* HEADER */}
+    <div className="bg-gray-950 border-b border-gray-800 p-4 flex justify-between items-center">
+      <h1 className="text-xl font-bold text-green-400">
+        🍺 Pub POS
+      </h1>
+      <div className="text-sm text-gray-400">
+        Garzón
+      </div>
+    </div>
 
- }
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
 
- return(
+      {tables.map(table => {
+        const isOccupied = table.total > 0
 
-  <div style={{padding:"30px"}}>
+        return (
+          <div
+            key={table.id}
+            onClick={() => navigate(`/order/${table.id}`)}
+            className={`
+              cursor-pointer rounded-2xl p-6 text-center
+              transition-all duration-200 shadow-lg
+              ${isOccupied 
+                ? "bg-red-500 hover:bg-red-600" 
+                : "bg-green-500 hover:bg-green-600"}
+            `}
+          >
 
-   <h1 style={{marginBottom:"20px"}}>
+            <div className="text-3xl font-bold">
+              Mesa {table.number}
+            </div>
+
+            <div className="mt-2 text-white/80">
+              {isOccupied ? "Ocupada" : "Disponible"}
+            </div>
+
+            {isOccupied && (
+              <div className="mt-2 text-lg font-semibold">
+                ${table.total.toLocaleString()}
+              </div>
+            )}
+
+          </div>
+        )
+      })}
+
+    </div>
+
+  </div>
+)
+
+
+ /* return(
+
+
+  
+  <div className="min-h-screen bg-gray-900 text-white p-6">
+
+   <h1 className="text-3xl font-bold mb-6">
     🍺 Mesas del Pub
    </h1>
 
-   <div style={{
-    display:"grid",
-    gridTemplateColumns:"repeat(auto-fill, 170px)",
-    gap:"20px"
-   }}>
 
-    {tables.map(table=>(
+   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
 
-     <div
-      key={table.id}
-      onClick={()=>navigate(`/order/${table.id}`)}
-      style={{
-       height:"140px",
-       borderRadius:"14px",
-       background:getColor(table),
-       color:"#fff",
-       cursor:"pointer",
-       display:"flex",
-       flexDirection:"column",
-       justifyContent:"center",
-       alignItems:"center",
-       fontWeight:"bold",
-       boxShadow:"0 6px 14px rgba(0,0,0,0.2)",
-       transition:"transform 0.2s"
-      }}
+    {tables.map(table=>{
 
-      onMouseEnter={e=> e.currentTarget.style.transform="scale(1.05)"}
-      onMouseLeave={e=> e.currentTarget.style.transform="scale(1)"}
-     >
+     const isOccupied = table.total > 0
 
-      <div style={{fontSize:"26px"}}>
-       Mesa {table.number}
-      </div>
+     return (
 
-      <div style={{marginTop:"8px", fontSize:"14px"}}>
+      <div
+       key={table.id}
+       onClick={()=>navigate(`/order/${table.id}`)}
+       className={`
+        cursor-pointer rounded-2xl p-6 text-center
+        transition-all duration-200
+        shadow-lg
+        ${isOccupied 
+          ? "bg-red-500 hover:bg-red-600" 
+          : "bg-green-500 hover:bg-green-600"}
+       `}
+      >
 
-       {table.total > 0
-        ?  "Ocupada"
-        : "Disponible"}
-
-      </div>
-
-      {table.total > 0 && (
-
-       <div style={{
-        marginTop:"6px",
-        fontSize:"16px"
-       }}>
-        ${table.total}
+       <div className="text-3xl font-bold">
+        Mesa {table.number}
        </div>
 
-      )}
+       <div className="mt-2 text-white/80">
+        {isOccupied ? "Ocupada" : "Disponible"}
+       </div>
 
-     </div>
+       {isOccupied && (
+        <div className="mt-2 text-lg font-semibold">
+         ${table.total.toLocaleString()}
+        </div>
+       )}
 
-    ))}
+      </div>
+
+     )
+
+    })}
 
    </div>
 
   </div>
 
- )
+ ) */
 
 }
