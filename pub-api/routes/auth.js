@@ -3,41 +3,9 @@ const router = express.Router();
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const db = require("./config/db");
+const db = require("../config/db");
 
 const SECRET = "super_secret_key";
-
-/* ===============================
-   REGISTER
-================================ */
-router.post("/register", async (req, res) => {
-  const { username, password, role } = req.body;
-
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    db.query(
-      "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-      [username, hashedPassword, role],
-      (err, result) => {
-        if (err) {
-          return res.status(500).json(err);
-        }
-
-        res.json({
-          message: "Usuario creado",
-          user: {
-            id: result.insertId,
-            username,
-            role,
-          },
-        });
-      }
-    );
-  } catch (error) {
-    res.status(500).json(error);
-  }
-});
 
 /* ===============================
    LOGIN
@@ -49,7 +17,9 @@ router.post("/login", (req, res) => {
     "SELECT * FROM users WHERE username = ?",
     [username],
     async (err, result) => {
-      if (err) return res.status(500).json(err);
+      if (err) {
+        return res.status(500).json(err);
+      }
 
       if (result.length === 0) {
         return res.status(401).json({ message: "Usuario no existe" });
@@ -83,6 +53,43 @@ router.post("/login", (req, res) => {
       });
     }
   );
+});
+
+/* ===============================
+   REGISTER
+================================ */
+router.post("/register", async (req, res) => {
+  const { username, password, role } = req.body;
+
+  try {
+    // encriptar contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    db.query(
+      "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+      [username, hashedPassword, role],
+      (err, result) => {
+        if (err) {
+          return res.status(500).json(err);
+        }
+
+        res.json({
+          message: "Usuario creado",
+          user: {
+            id: result.insertId,
+            username,
+            role,
+          },
+        });
+      }
+    );
+  } catch (error) {
+    res.status(500).json(error);
+  }
+router.get("/test", (req, res) => {
+  res.send("auth funcionando");
+});
+
 });
 
 module.exports = router;
