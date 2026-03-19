@@ -26,8 +26,8 @@ export default function Payment(){
 
     try {
 
-      await API.post("/pay-order", {
-        order_id: orderId
+      await API.post("/close-order", {
+        order_id:Number(orderId)
       })
 
       alert("✅ Pago realizado")

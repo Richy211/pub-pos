@@ -1,88 +1,189 @@
 const express = require("express");
+const app = express();
 const router = express.Router();
 
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
+const cors = require("cors");
 const db = require("./config/db");
 
-const SECRET = "super_secret_key";
+app.use(cors());
+app.use(express.json());
 
 /* ===============================
-   REGISTER
+   GET TABLES (con estado real)
 ================================ */
-router.post("/register", async (req, res) => {
-  const { username, password, role } = req.body;
+router.get("/tables", (req, res) => {
+ 
+const query = `
+  SELECT 
+    t.id, 
+    t.number,
+    CASE 
+      WHEN EXISTS (
+        SELECT 1 FROM orders o 
+        WHERE o.table_id = t.id 
+        AND o.status = 'open'
+      ) 
+      THEN 'occupied'
+      ELSE 'available'
+    END as status
+  FROM tables t
+`;
 
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    db.query(
-      "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-      [username, hashedPassword, role],
-      (err, result) => {
-        if (err) {
-          return res.status(500).json(err);
-        }
-
-        res.json({
-          message: "Usuario creado",
-          user: {
-            id: result.insertId,
-            username,
-            role,
-          },
-        });
-      }
-    );
-  } catch (error) {
-    res.status(500).json(error);
-  }
+  db.query(query, (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result);
+  });
 });
 
 /* ===============================
-   LOGIN
+   OPEN ORDER
 ================================ */
-router.post("/login", (req, res) => {
-  const { username, password } = req.body;
+router.post("/open-order", (req, res) => {
+  const { table_id } = req.body;
 
+  // verificar si ya existe
   db.query(
-    "SELECT * FROM users WHERE username = ?",
-    [username],
-    async (err, result) => {
-      if (err) return res.status(500).json(err);
-
-      if (result.length === 0) {
-        return res.status(401).json({ message: "Usuario no existe" });
+    "SELECT * FROM orders WHERE table_id = ? AND status = 'open'",
+    [table_id],
+    (err, result) => {
+      if (result.length > 0) {
+        return res.json(result[0]);
       }
 
-      const user = result[0];
+      db.query(
+        "INSERT INTO orders (table_id, status) VALUES (?, 'open')",
+        [table_id],
+        (err, insertResult) => {
+          if (err) return res.status(500).json(err);
 
-      const validPassword = await bcrypt.compare(password, user.password);
-
-      if (!validPassword) {
-        return res.status(401).json({ message: "Contraseña incorrecta" });
-      }
-
-      const token = jwt.sign(
-        {
-          id: user.id,
-          role: user.role,
-          username: user.username,
-        },
-        SECRET,
-        { expiresIn: "8h" }
+          res.json({
+            id: insertResult.insertId,
+            table_id,
+            status: "open",
+          });
+        }
       );
-
-      res.json({
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role,
-        },
-      });
     }
   );
 });
 
-module.exports = router;
+/* ===============================
+   GET ORDER BY TABLE
+================================ */
+router.get("/orders/table/:tableId", (req, res) => {
+  const { tableId } = req.params;
+
+  db.query(
+    "SELECT * FROM orders WHERE table_id = ? AND status = 'open'",
+    [tableId],
+    (err, result) => {
+      if (err) return res.status(500).json(err);
+      res.json(result[0] || null);
+    }
+  );
+});
+
+/* ===============================
+   GET ORDER ITEMS
+================================ */
+router.get("/order-items/:orderId", (req, res) => {
+  const { orderId } = req.params;
+
+  const query = `
+    SELECT oi.*, p.name, p.price
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
+    WHERE oi.order_id = ?
+  `;
+
+  db.query(query, [orderId], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result);
+  });
+});
+
+/* ===============================
+   ADD PRODUCT TO ORDER
+================================ */
+router.post("/order-items", (req, res) => {
+  const { order_id, product_id } = req.body;
+
+  // verificar si ya existe
+  db.query(
+    "SELECT * FROM order_items WHERE order_id = ? AND product_id = ?",
+    [order_id, product_id],
+    (err, result) => {
+      if (result.length > 0) {
+        db.query(
+          "UPDATE order_items SET qty = qty + 1 WHERE id = ?",
+          [result[0].id],
+          (err) => {
+            if (err) return res.status(500).json(err);
+            res.json({ message: "Cantidad actualizada" });
+          }
+        );
+      } else {
+        db.query(
+          "INSERT INTO order_items (order_id, product_id, qty) VALUES (?, ?, 1)",
+          [order_id, product_id],
+          (err) => {
+            if (err) return res.status(500).json(err);
+            res.json({ message: "Producto agregado" });
+          }
+        );
+      }
+    }
+  );
+});
+
+/* ===============================
+   GET PRODUCTS
+================================ */
+router.get("/products", (req, res) => {
+  db.query("SELECT * FROM products", (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result);
+  });
+});
+
+/* ===============================
+   TOTAL DE ORDEN
+================================ */
+router.get("/order-total/:orderId", (req, res) => {
+  const { orderId } = req.params;
+
+  const query = `
+    SELECT SUM(p.price * oi.qty) as total
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
+    WHERE oi.order_id = ?
+  `;
+
+  db.query(query, [orderId], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result[0]);
+  });
+});
+
+/* ===============================
+   CLOSE ORDER (PAGO)
+================================ */
+router.post("/close-order", (req, res) => {
+  const { order_id } = req.body;
+
+  db.query(
+    "UPDATE orders SET status = 'paid' WHERE id = ?",
+    [order_id],
+    (err) => {
+      if (err) return res.status(500).json(err);
+
+      res.json({ message: "Orden cerrada" });
+    }
+  );
+});
+
+app.use("/", router);
+
+app.listen(5000, () => {
+  console.log("Servidor corriendo en http://localhost:5000");
+});

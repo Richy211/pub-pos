@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 18-03-2026 a las 19:40:47
+-- Tiempo de generación: 19-03-2026 a las 20:58:34
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.1.25
 
@@ -39,7 +39,14 @@ CREATE TABLE `orders` (
 --
 
 INSERT INTO `orders` (`id`, `table_id`, `status`, `created_at`) VALUES
-(1, 1, 'open', '2026-03-18 18:40:08');
+(1, 1, 'open', '2026-03-18 18:40:08'),
+(2, 2, 'paid', '2026-03-18 18:45:54'),
+(3, 2, 'open', '2026-03-19 15:43:57'),
+(4, 1, 'open', '2026-03-19 15:44:08'),
+(5, 2, 'open', '2026-03-19 15:47:17'),
+(6, 1, 'open', '2026-03-19 15:47:28'),
+(7, 3, 'open', '2026-03-19 15:47:39'),
+(8, 1, 'open', '2026-03-19 15:51:29');
 
 -- --------------------------------------------------------
 
@@ -60,7 +67,10 @@ CREATE TABLE `order_items` (
 
 INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `qty`) VALUES
 (267, 1, 2, 1),
-(268, 1, 1, 1);
+(268, 1, 1, 1),
+(269, 2, 1, 1),
+(270, 2, 2, 1),
+(271, 2, 3, 1);
 
 -- --------------------------------------------------------
 
@@ -105,6 +115,20 @@ INSERT INTO `tables` (`id`, `number`, `status`) VALUES
 (3, 3, 'free'),
 (4, 4, 'free');
 
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `users`
+--
+
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` varchar(20) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Índices para tablas volcadas
 --
@@ -134,6 +158,13 @@ ALTER TABLE `tables`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indices de la tabla `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `username` (`username`);
+
+--
 -- AUTO_INCREMENT de las tablas volcadas
 --
 
@@ -141,13 +172,13 @@ ALTER TABLE `tables`
 -- AUTO_INCREMENT de la tabla `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=269;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=272;
 
 --
 -- AUTO_INCREMENT de la tabla `products`
@@ -160,6 +191,12 @@ ALTER TABLE `products`
 --
 ALTER TABLE `tables`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT de la tabla `users`
+--
+ALTER TABLE `users`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -31,7 +31,7 @@ export default function Tables(){
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
 
       {tables.map(table => {
-        const isOccupied = table.total > 0
+        const isOccupied = table.order_id !== null
 
         return (
           <div
@@ -55,11 +55,11 @@ export default function Tables(){
               {isOccupied ? "Ocupada" : "Disponible"}
             </div>
 
-            {isOccupied && (
+           {/*  {isOccupied && (
               <div className="mt-2 text-lg font-semibold">
                 ${table.total.toLocaleString()}
               </div>
-            )}
+            )} */}
 
           </div>
         )

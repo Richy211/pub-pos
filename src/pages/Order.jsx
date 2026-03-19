@@ -11,19 +11,28 @@ export default function Order(){
   const [order,setOrder] = useState(null)
   const [items,setItems] = useState([])
 
-  useEffect(()=>{
+useEffect(() => {
 
-    API.get(`/order/${tableId}`)
-      .then(res=>{
+  // 🔥 obtener orden existente
+  API.get(`/orders/table/${tableId}`)
+    .then(res => {
+      if(res.data){
         setOrder(res.data)
-      })
+      } else {
+        openOrder() // 👈 crear automáticamente
+      }
+    })
 
-    API.get("/products")
-      .then(res=>{
-        setProducts(res.data)
-      })
+  // 🔥 productos
+  API.get("/products")
+    .then(res => {
+      setProducts(res.data)
+    })
 
-  },[])
+}, [])
+
+
+
 
   useEffect(()=>{
     if(order){
@@ -42,18 +51,23 @@ export default function Order(){
 
   }
 
-  const addProduct = (productId)=>{
+  const addProduct = (productId) => {
 
-    API.post("/order-item",{
-      order_id: order.id,
-      product_id: productId
-    })
-    .then(()=> {
-      loadItems()
-    })
-
+  if(!order){
+    console.log("No hay orden");
+    return;
   }
 
+  API.post("/order-items",{
+    order_id: order.id,
+    product_id: productId
+  })
+  .then(()=> {
+    loadItems()
+  })
+
+}
+  
   const loadItems = ()=>{
 
     API.get(`/order-items/${order.id}`)
@@ -81,6 +95,16 @@ export default function Order(){
   const total = items.reduce((acc,item)=>{
     return acc + item.qty * item.price
   },0)
+
+    const eliminarProducto = async (id) => {
+      await API.delete(`/order-items/${id}`);
+      loadOrderItems(); // 🔥 recarga lista
+    };
+
+    const loadOrderItems = () => {
+  API.get(`/order-items/${orderId}`)
+    .then(res => setItems(res.data));
+};
 
   // 🧠 SI NO EXISTE ORDEN
   if(!order){
@@ -160,41 +184,29 @@ export default function Order(){
 
           <div className="flex-1 overflow-y-auto">
 
-            {items.map(item => (
-              <div 
-                key={item.id} 
-                className="bg-gray-700 rounded-xl p-3 mb-3"
-              >
 
-                <div className="flex justify-between items-center">
+             {items.map(item => (
+    <div key={item.id} className="flex justify-between items-center mb-2">
 
-                  <div>
-                    <div className="font-semibold">
-                      {item.name}
-                    </div>
-                    <div className="text-sm text-gray-300">
-                      ${item.price} c/u
-                    </div>
-                  </div>
+      <span>{item.name} x{item.qty}</span>
 
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    className="bg-red-500 hover:bg-red-600 px-2 rounded"
-                  >
-                    ❌
-                  </button>
+      <div className="flex gap-2 items-center">
 
-                </div>
+        <span>${(item.qty * item.price).toLocaleString()}</span>
 
-                <div className="flex justify-between mt-2 text-sm">
-                  <span>Cantidad: {item.qty}</span>
-                  <span className="font-bold">
-                    ${ (item.qty * item.price).toLocaleString() }
-                  </span>
-                </div>
+        <button
+          onClick={() => eliminarProducto(item.id)}
+          className="bg-red-500 hover:bg-red-600 px-2 py-1 rounded text-sm"
+        >
+          ❌
+        </button>
 
-              </div>
-            ))}
+      </div>
+
+    </div>
+  ))}
+
+
 
           </div>
 
