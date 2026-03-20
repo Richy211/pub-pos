@@ -6,6 +6,8 @@ import Tables from "./pages/Tables"
 import Order from "./pages/Order"
 import Payment from "./pages/Payment"
 
+import CashClose from "./pages/CashClose"
+
 
 function App() {
   return (
@@ -20,6 +22,7 @@ function App() {
           <Route path="/tables" element={<Tables />} />
             <Route path="/order/:tableId" element={<Order />} />
             <Route path="/payment/:orderId" element={<Payment />} />
+            <Route path="/cash-close" element={<CashClose />} />
           </Routes>
       </div>
       </div>

@@ -25,8 +25,17 @@ export default function Tables(){
    })
  }
 
- return (
-<div className="min-h-screen p-6 bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-white">
+return (
+  <div className="min-h-screen p-6 bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-white">
+
+    {/* 🔥 BOTÓN CIERRE DE CAJA */}
+    <button
+      onClick={() => navigate("/cash-close")}
+      className="mb-6 bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-xl font-bold"
+    >
+      💰 Cierre de caja
+    </button>
+
     {/* GRID MESAS */}
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
 

@@ -164,6 +164,38 @@ router.post("/cancel-order", (req, res) => {
 });
 
 /* ===============================
+   CIERRE DE CAJA
+================================ */
+router.get("/cash-close", (req, res) => {
+
+  const query = `
+    SELECT 
+      COUNT(*) as total_orders,
+      SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_orders,
+      SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders,
+      SUM(
+        CASE 
+          WHEN status = 'paid' THEN (
+            SELECT SUM(oi.qty * p.price)
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = o.id
+          )
+          ELSE 0
+        END
+      ) as total_sales
+    FROM orders o
+  `;
+
+  db.query(query, (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result[0]);
+  });
+
+});
+
+
+/* ===============================
    REMOVE ITEM (OPCIÓN RÁPIDA)
 ================================ */
 
