@@ -137,6 +137,72 @@ router.post("/order-items", (req, res) => {
 });
 
 /* ===============================
+   REMOVE ITEM (OPCIÓN RÁPIDA)
+================================ */
+
+router.post("/remove-item", (req, res) => {
+  const { order_item_id } = req.body;
+
+  // 1. obtener order_id
+  db.query(
+    "SELECT order_id FROM order_items WHERE id = ?",
+    [order_item_id],
+    (err, result) => {
+      if (err) return res.status(500).json(err);
+
+      if (!result.length) {
+        return res.status(404).json({ message: "Item no encontrado" });
+      }
+
+      const orderId = result[0].order_id;
+
+      // 2. eliminar item
+      db.query(
+        "DELETE FROM order_items WHERE id = ?",
+        [order_item_id],
+        (err) => {
+          if (err) return res.status(500).json(err);
+
+          // 3. contar items restantes
+          db.query(
+            "SELECT COUNT(*) as count FROM order_items WHERE order_id = ?",
+            [orderId],
+            (err, countResult) => {
+              if (err) return res.status(500).json(err);
+
+              const count = countResult[0].count;
+
+              // 🔥 CLAVE REAL
+              if (count === 0) {
+                // en vez de DELETE → mejor marcar como cerrada
+                db.query(
+                  "UPDATE orders SET status = 'cancelled' WHERE id = ?",
+                  [orderId],
+                  (err) => {
+                    if (err) return res.status(500).json(err);
+
+                    return res.json({ message: "Orden cancelada" });
+                  }
+                );
+              } else {
+                res.json({ message: "Item eliminado" });
+              }
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
+
+
+
+
+
+
+
+/* ===============================
    GET PRODUCTS
 ================================ */
 router.get("/products", (req, res) => {
@@ -178,6 +244,22 @@ router.post("/close-order", (req, res) => {
       if (err) return res.status(500).json(err);
 
       res.json({ message: "Orden cerrada" });
+    }
+  );
+});
+
+/* ===============================
+   DELETE ORDER ITEM
+================================ */
+router.delete("/order-items/:id", (req, res) => {
+  const { id } = req.params;
+
+  db.query(
+    "DELETE FROM order_items WHERE id = ?",
+    [id],
+    (err) => {
+      if (err) return res.status(500).json(err);
+      res.json({ message: "Item eliminado" });
     }
   );
 });

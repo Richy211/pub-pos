@@ -11,102 +11,110 @@ export default function Order(){
   const [order,setOrder] = useState(null)
   const [items,setItems] = useState([])
 
-useEffect(() => {
+  /* ===============================
+     CARGA INICIAL
+  ============================== */
+  useEffect(() => {
+    loadOrder()
+    loadProducts()
+  }, [tableId])
 
-  // 🔥 obtener orden existente
-  API.get(`/orders/table/${tableId}`)
-    .then(res => {
-      if(res.data){
-        setOrder(res.data)
-      } else {
-        openOrder() // 👈 crear automáticamente
-      }
-    })
+  const loadOrder = () => {
+    API.get(`/orders/table/${tableId}`)
+      .then(res => {
+        if(res.data){
+          setOrder(res.data)
+        } else {
+          setOrder(null)
+          setItems([])
+        }
+      })
+  }
 
-  // 🔥 productos
-  API.get("/products")
-    .then(res => {
-      setProducts(res.data)
-    })
+  const loadProducts = () => {
+    API.get("/products")
+      .then(res => setProducts(res.data))
+  }
 
-}, [])
-
-
-
-
+  /* ===============================
+     CARGAR ITEMS CUANDO HAY ORDEN
+  ============================== */
   useEffect(()=>{
     if(order){
-      loadItems()
+      loadItems(order.id)
     }
   },[order])
 
-  const openOrder = ()=>{
-
-    API.post("/open-order",{
-      table_id: tableId
-    })
-    .then(res=>{
-      setOrder(res.data)
-    })
-
+  const loadItems = (orderId) => {
+    API.get(`/order-items/${orderId}`)
+      .then(res => setItems(res.data))
   }
 
+  /* ===============================
+     ABRIR ORDEN
+  ============================== */
+  const openOrder = ()=>{
+    API.post("/open-order",{ table_id: tableId })
+      .then(res => setOrder(res.data))
+  }
+
+  /* ===============================
+     AGREGAR PRODUCTO
+  ============================== */
   const addProduct = (productId) => {
 
-  if(!order){
-    console.log("No hay orden");
-    return;
+    if(!order) return
+
+    API.post("/order-items",{
+      order_id: order.id,
+      product_id: productId
+    })
+    .then(()=> loadItems(order.id))
   }
 
-  API.post("/order-items",{
-    order_id: order.id,
-    product_id: productId
+  /* ===============================
+     ELIMINAR ITEM
+  ============================== */
+ 
+const removeItem = (id)=>{
+  API.post("/remove-item",{
+    order_item_id: id
   })
-  .then(()=> {
-    loadItems()
+  .then(() => {
+    // 🔥 volver a consultar si la orden sigue existiendo
+    API.get(`/orders/table/${tableId}`)
+      .then(res => {
+        if(!res.data){
+          // 💥 no hay orden → volver a mesas
+          navigate("/")
+        } else {
+          setOrder(res.data)
+          loadItems(res.data.id)
+        }
+      })
   })
-
 }
-  
-  const loadItems = ()=>{
 
-    API.get(`/order-items/${order.id}`)
-    .then(res=>{
-      setItems(res.data)
-    })
 
-  }
 
-  const removeItem = (id)=>{
 
-    API.post("/remove-item",{
-      order_item_id: id
-    })
-    .then(()=>{
-      loadItems()
-    })
-
-  }
-
+  /* ===============================
+     IR A PAGAR
+  ============================== */
   const goToPayment = ()=>{
     navigate(`/payment/${order.id}`)
   }
 
+  /* ===============================
+     TOTAL
+  ============================== */
   const total = items.reduce((acc,item)=>{
     return acc + item.qty * item.price
   },0)
 
-    const eliminarProducto = async (id) => {
-      await API.delete(`/order-items/${id}`);
-      loadOrderItems(); // 🔥 recarga lista
-    };
-
-    const loadOrderItems = () => {
-  API.get(`/order-items/${orderId}`)
-    .then(res => setItems(res.data));
-};
-
-  // 🧠 SI NO EXISTE ORDEN
+  /* ===============================
+     UI SIN ORDEN
+  ============================== */
   if(!order){
     return(
       <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
@@ -126,10 +134,13 @@ useEffect(() => {
     )
   }
 
+  /* ===============================
+     UI PRINCIPAL
+  ============================== */
   return (
     <div>
 
-      {/* 🔥 HEADER */}
+      {/* HEADER */}
       <div className="bg-gray-950 border-b border-gray-800 p-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-green-400">
           🍺 Pub POS
@@ -141,7 +152,7 @@ useEffect(() => {
 
       <div className="min-h-screen bg-gray-900 text-white flex">
 
-        {/* 🧾 IZQUIERDA (PRODUCTOS) */}
+        {/* PRODUCTOS */}
         <div className="w-2/3 p-6">
 
           <h1 className="text-2xl font-bold mb-4">
@@ -175,7 +186,7 @@ useEffect(() => {
 
         </div>
 
-        {/* 🧾 DERECHA (DETALLE) */}
+        {/* DETALLE */}
         <div className="w-1/3 bg-gray-800 p-6 border-l border-gray-700 flex flex-col">
 
           <h2 className="text-xl font-bold mb-4">
@@ -184,29 +195,24 @@ useEffect(() => {
 
           <div className="flex-1 overflow-y-auto">
 
+            {items.map(item => (
+              <div key={item.id} className="flex justify-between items-center mb-2">
 
-             {items.map(item => (
-    <div key={item.id} className="flex justify-between items-center mb-2">
+                <span>{item.name} x{item.qty}</span>
 
-      <span>{item.name} x{item.qty}</span>
+                <div className="flex gap-2 items-center">
+                  <span>${(item.qty * item.price).toLocaleString()}</span>
 
-      <div className="flex gap-2 items-center">
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    className="bg-red-500 hover:bg-red-600 px-2 py-1 rounded text-sm"
+                  >
+                    ❌
+                  </button>
+                </div>
 
-        <span>${(item.qty * item.price).toLocaleString()}</span>
-
-        <button
-          onClick={() => eliminarProducto(item.id)}
-          className="bg-red-500 hover:bg-red-600 px-2 py-1 rounded text-sm"
-        >
-          ❌
-        </button>
-
-      </div>
-
-    </div>
-  ))}
-
-
+              </div>
+            ))}
 
           </div>
 

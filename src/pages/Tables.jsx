@@ -30,40 +30,39 @@ export default function Tables(){
     {/* GRID MESAS */}
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
 
-      {tables.map(table => {
-        const isOccupied = table.order_id !== null
+ 
+{tables.map(table => {
 
-        return (
-          <div
-            key={table.id}
-            onClick={() => navigate(`/order/${table.id}`)}
-            className={`
-              cursor-pointer rounded-2xl p-6 text-center
-              transition-all duration-300 shadow-lg
-              transform hover:scale-105
-              ${isOccupied 
-                ? "bg-red-500 hover:bg-red-600" 
-                : "bg-green-500 hover:bg-green-600"}
-            `}
-          >
+  const isOccupied = table.status === "occupied"
 
-            <div className="text-3xl font-bold">
-              Mesa {table.number}
-            </div>
+  return (
+    <div
+      key={table.id}
+      onClick={() => navigate(`/order/${table.id}`)}
+      className={`
+        cursor-pointer rounded-2xl p-6 text-center
+        transition-all duration-300 shadow-lg
+        transform hover:scale-105
+        ${isOccupied 
+          ? "bg-red-500 hover:bg-red-600" 
+          : "bg-green-500 hover:bg-green-600"}
+      `}
+    >
 
-            <div className="mt-2 text-white/80">
-              {isOccupied ? "Ocupada" : "Disponible"}
-            </div>
+      <div className="text-3xl font-bold">
+        Mesa {table.number}
+      </div>
 
-           {/*  {isOccupied && (
-              <div className="mt-2 text-lg font-semibold">
-                ${table.total.toLocaleString()}
-              </div>
-            )} */}
+      <div className="mt-2 text-white/80">
+        {isOccupied ? "Ocupada" : "Disponible"}
+      </div>
 
-          </div>
-        )
-      })}
+    </div>
+  )
+})}
+
+
+
 
     </div>
 
