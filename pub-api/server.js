@@ -137,6 +137,33 @@ router.post("/order-items", (req, res) => {
 });
 
 /* ===============================
+   CANCEL ORDER (BOTÓN PRO)
+================================ */
+router.post("/cancel-order", (req, res) => {
+  const { order_id } = req.body;
+
+  // 1. eliminar items
+  db.query(
+    "DELETE FROM order_items WHERE order_id = ?",
+    [order_id],
+    (err) => {
+      if (err) return res.status(500).json(err);
+
+      // 2. marcar orden como cancelada
+      db.query(
+        "UPDATE orders SET status = 'cancelled' WHERE id = ?",
+        [order_id],
+        (err) => {
+          if (err) return res.status(500).json(err);
+
+          res.json({ message: "Orden cancelada" });
+        }
+      );
+    }
+  );
+});
+
+/* ===============================
    REMOVE ITEM (OPCIÓN RÁPIDA)
 ================================ */
 

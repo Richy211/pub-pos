@@ -95,6 +95,15 @@ const removeItem = (id)=>{
   })
 }
 
+const cancelOrder = () => {
+  API.post("/cancel-order", {
+    order_id: order.id
+  })
+  .then(() => {
+    navigate("/", { replace: true })
+  })
+}
+
 
 
 
@@ -229,6 +238,16 @@ const removeItem = (id)=>{
             >
               💳 Ir a pagar
             </button>
+
+              <button
+                  onClick={cancelOrder}
+                  className="w-full mt-2 bg-red-500 hover:bg-red-600 p-3 rounded-xl font-bold"
+                >
+                  ❌ Cancelar mesa
+                </button>
+
+
+
 
           </div>
 
