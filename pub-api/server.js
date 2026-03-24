@@ -1,12 +1,37 @@
 const express = require("express");
+const jwt = require("jsonwebtoken")
+const bcrypt = require("bcrypt")
 const app = express();
 const router = express.Router();
 
 const cors = require("cors");
 const db = require("./config/db");
 
+
+const SECRET = "secreto_super_seguro"
+
+const verifyToken = (req, res, next) => {
+
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader) {
+    return res.status(403).json({ message: "No autorizado" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, SECRET, (err, decoded) => {
+    if (err) return res.status(401).json({ message: "Token inválido" });
+
+    req.user = decoded;
+    next();
+  });
+};
+
 app.use(cors());
 app.use(express.json());
+
+
 
 /* ===============================
    GET TABLES (con estado real)
@@ -166,7 +191,13 @@ router.post("/cancel-order", (req, res) => {
 /* ===============================
    CIERRE DE CAJA
 ================================ */
-router.get("/cash-close", (req, res) => {
+
+router.get("/cash-close", verifyToken, (req, res) => {
+
+  // 🔒 SOLO ADMIN
+  if(req.user.role !== "admin"){
+    return res.status(403).json({ message: "Solo admin" });
+  }
 
   const query = `
     SELECT 
@@ -193,6 +224,9 @@ router.get("/cash-close", (req, res) => {
   });
 
 });
+
+
+
 
 
 /* ===============================
@@ -322,6 +356,46 @@ router.delete("/order-items/:id", (req, res) => {
     }
   );
 });
+
+
+router.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  db.query(
+    "SELECT * FROM users WHERE username = ?",
+    [username],
+    async (err, result) => {
+      if (err) return res.status(500).json(err);
+
+      if (result.length === 0) {
+        return res.status(401).json({ message: "Usuario no existe" });
+      }
+
+      const user = result[0];
+
+      const validPassword = await bcrypt.compare(password, user.password);
+
+      if (!validPassword) {
+        return res.status(401).json({ message: "Contraseña incorrecta" });
+      }
+
+      const token = jwt.sign(
+        {
+          id: user.id,
+          role: user.role
+        },
+        SECRET,
+        { expiresIn: "8h" }
+      );
+
+      res.json({
+        token,
+        role: user.role
+      });
+    }
+  );
+});
+
 
 app.use("/", router);
 
