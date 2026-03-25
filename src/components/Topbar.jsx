@@ -6,12 +6,13 @@ const Topbar = () => {
       bg-white text-slate-900
       dark:bg-slate-800 dark:text-white">
 
-      <h1 className="text-lg font-semibold">🍺 Pub POS</h1>
-  <div className="text-sm text-slate-600 dark:text-slate-300">Garzón</div>
-      
-      <h1 className="text-lg font-semibold">
-        🍺 Pub POS
-      </h1>
+<h2 className="text-xl font-bold flex items-center gap-2">
+  🍺 Pub POS
+</h2>
+
+{!collapsed && (
+  <p className="text-sm text-gray-400">{userName}</p>
+)}
 
 
 

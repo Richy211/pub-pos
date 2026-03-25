@@ -11,15 +11,22 @@ export default function Login(){
   const handleLogin = () => {
     API.post("/login", { username, password })
       .then(res => {
-
         localStorage.setItem("token", res.data.token)
         localStorage.setItem("role", res.data.role)
-
         navigate("/")
       })
       .catch(() => {
         alert("Credenciales incorrectas")
       })
+  }
+
+  // 🔥 LOGIN RÁPIDO (SOLO DESARROLLO)
+  const loginAs = (role) => {
+    const fakeToken = btoa(JSON.stringify({ role }))
+    const token = `fake.${fakeToken}.fake`
+
+    localStorage.setItem("token", token)
+    window.location.reload()
   }
 
   return (
@@ -50,6 +57,27 @@ export default function Login(){
         >
           Entrar
         </button>
+
+        {/* 🔥 BOTONES DEV */}
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={() => loginAs("admin")}
+            className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded"
+          >
+            Admin
+          </button>
+
+          <button
+            onClick={() => loginAs("garzon")}
+            className="w-full bg-yellow-600 hover:bg-yellow-700 p-2 rounded"
+          >
+            Garzón
+          </button>
+        </div>
+
+        <p className="text-xs text-gray-400 mt-2 text-center">
+          Modo desarrollo
+        </p>
 
       </div>
 

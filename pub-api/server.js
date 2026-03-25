@@ -396,6 +396,26 @@ router.post("/login", (req, res) => {
   );
 });
 
+router.post("/register", async (req, res) => {
+  const { username, password, role } = req.body;
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  db.query(
+    "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+    [username, hashedPassword, role],
+    (err) => {
+      if (err) return res.status(500).json(err);
+
+      res.json({ message: "Usuario creado" });
+    }
+  );
+});
+
+
+
+
+
 
 app.use("/", router);
 
