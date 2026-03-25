@@ -6,6 +6,10 @@ import Payment from "./pages/Payment";
 import CashClose from "./pages/CashClose";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Products from "./pages/Products";
+import Users from "./pages/Users";
+import Purchases from "./pages/Purchases";
+import Tax from "./pages/Tax";
 
 
 // 🔐 Decodificar token
@@ -52,6 +56,11 @@ function App() {
             <Route path="/cash-close"  element={role === "admin" ? <CashClose /> : <Tables />} />
 
             <Route path="/cash-close"  element={<ProtectedRoute roles={["admin"]}><CashClose /></ProtectedRoute> } />
+
+            <Route path="/products" element={role === "admin" ? <Products /> : <Tables />} />
+            <Route path="/users" element={role === "admin" ? <Users /> : <Tables />} />
+            <Route path="/purchases" element={role === "admin" ? <Purchases /> : <Tables />} />
+            <Route path="/tax" element={role === "admin" ? <Tax /> : <Tables />} />
 
             
 

@@ -1,61 +1,138 @@
-import { useEffect, useState } from "react"
-import { API } from "../services/api"
-import { useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react";
+import { API } from "../services/api";
 
-export default function CashClose(){
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer
+} from "recharts";
 
-  const [data,setData] = useState(null)
-  const navigate = useNavigate()
+const CashClose = () => {
 
-  useEffect(()=>{
-    API.get("/cash-close")
-      .then(res => setData(res.data))
-  },[])
+  const [data, setData] = useState(null);
+  const [salesByDay, setSalesByDay] = useState([]);
 
-  if(!data){
-    return <div className="p-6 text-white">Cargando...</div>
-  }
+  // 🔹 CARGAR RESUMEN
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    API.get("/cash-close", {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    .then(res => setData(res.data))
+    .catch(err => {
+      console.error(err);
+      alert("No autorizado");
+    });
+  }, []);
+
+  // 🔹 CARGAR VENTAS POR DÍA
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    API.get("/sales-by-day", {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    .then(res => setSalesByDay(res.data))
+    .catch(err => console.error(err));
+  }, []);
+
+  // 📊 DATOS ÓRDENES
+  const ordersChart = data ? [
+    { name: "Pagadas", value: data.paid_orders },
+    { name: "Canceladas", value: data.cancelled_orders }
+  ] : [];
+
+  // 💰 DATOS VENTAS
+  const salesChart = data ? [
+    { name: "Ventas", value: data.total_sales }
+  ] : [];
+
+  // 📈 FORMATEAR VENTAS POR DÍA
+  const dailyChart = salesByDay.map(item => ({
+    name: item.date,
+    value: item.total
+  }));
+
+  if (!data) return <p>Cargando cierre de caja...</p>;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="text-white">
 
-      <h1 className="text-3xl font-bold mb-6 text-green-400">
-        💰 Cierre de Caja
-      </h1>
+      <h1 className="text-2xl mb-6">💰 Cierre de Caja</h1>
 
-      <div className="grid grid-cols-2 gap-6">
+      {/* 🧾 RESUMEN */}
+      <div className="space-y-4">
 
-        <div className="bg-gray-800 p-6 rounded-xl">
-          <h2 className="text-lg text-gray-400">Órdenes totales</h2>
-          <p className="text-2xl font-bold">{data.total_orders}</p>
+        <div className="bg-slate-800 p-4 rounded">
+          <p>Total órdenes: {data.total_orders}</p>
         </div>
 
-        <div className="bg-green-600 p-6 rounded-xl">
-          <h2 className="text-lg">Pagadas</h2>
-          <p className="text-2xl font-bold">{data.paid_orders}</p>
+        <div className="bg-green-700 p-4 rounded">
+          <p>Órdenes pagadas: {data.paid_orders}</p>
         </div>
 
-        <div className="bg-red-600 p-6 rounded-xl">
-          <h2 className="text-lg">Canceladas</h2>
-          <p className="text-2xl font-bold">{data.cancelled_orders}</p>
+        <div className="bg-red-700 p-4 rounded">
+          <p>Órdenes canceladas: {data.cancelled_orders}</p>
         </div>
 
-        <div className="bg-blue-600 p-6 rounded-xl col-span-2">
-          <h2 className="text-lg">Total vendido</h2>
-          <p className="text-3xl font-bold">
-            ${Number(data.total_sales || 0).toLocaleString()}
-          </p>
+        <div className="bg-blue-700 p-4 rounded">
+          <p>Total ventas: ${data.total_sales || 0}</p>
         </div>
 
       </div>
 
-      <button
-        onClick={() => navigate("/")}
-        className="mt-6 bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-xl"
-      >
-        ⬅ Volver
-      </button>
+      {/* 📊 ÓRDENES */}
+      <div className="bg-slate-800 p-4 rounded mt-6">
+        <h2 className="mb-4">📊 Órdenes</h2>
+
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={ordersChart}>
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="value" fill="#22c55e" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* 💰 VENTAS */}
+      <div className="bg-slate-800 p-4 rounded mt-6">
+        <h2 className="mb-4">💰 Ventas</h2>
+
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={salesChart}>
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="value" fill="#f97316" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* 📈 VENTAS POR DÍA */}
+      <div className="bg-slate-800 p-4 rounded mt-6">
+        <h2 className="mb-4">📈 Ventas por día</h2>
+
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={dailyChart}>
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="value" fill="#3b82f6" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
     </div>
-  )
-}
+  );
+};
+
+export default CashClose;

@@ -46,40 +46,44 @@ const Sidebar = () => {
   const isActive = (path) => location.pathname.startsWith(path);
 
   // 📌 SECCIONES BASE
-  const sections = [
-    {
-      title: "Ventas",
-      items: [
-        { name: "Mesas", path: "/tables", icon: <LayoutGrid size={20} /> },
-        { name: "Órdenes", path: "/order", icon: <ClipboardList size={20} /> },
-        { name: "Pagos", path: "/payment", icon: <CreditCard size={20} /> },
-      ],
-    },
-    {
-      title: "Reportes",
-      items: [
-        { name: "Ventas", path: "/reports", icon: <BarChart3 size={20} /> },
-      ],
-    },
-    {
-      title: "Admin",
-      items: [
-        { name: "Configuración", path: "/settings", icon: <Settings size={20} /> },
-      ],
-    },
-  ];
+ const sections = [
+  {
+    title: "Ventas",
+    items: [
+      { name: "Mesas", path: "/tables", icon: <LayoutGrid size={20} /> },
+      { name: "Órdenes", path: "/order", icon: <ClipboardList size={20} /> },
+      { name: "Pagos", path: "/payment", icon: <CreditCard size={20} /> },
+    ],
+  },
+  {
+    title: "Reportes",
+    items: [
+      { name: "Ventas", path: "/reports", icon: <BarChart3 size={20} /> },
+    ],
+  },
+  {
+    title: "Admin",
+    items: [
+      { name: "Productos", path: "/products", icon: <ClipboardList size={20} /> },
+      { name: "Usuarios", path: "/users", icon: <LayoutGrid size={20} /> },
+      { name: "Compras", path: "/purchases", icon: <CreditCard size={20} /> },
+      { name: "IVA", path: "/tax", icon: <BarChart3 size={20} /> },
+      { name: "Configuración", path: "/settings", icon: <Settings size={20} /> },
+    ],
+  },
+];
+
 
   // 🔐 FILTRO REAL (ELIMINA SECCIONES COMPLETAS)
-  const filteredSections = sections
-    .map((section) => {
-      if (role !== "admin") {
-        if (section.title === "Admin" || section.title === "Reportes") {
-          return null;
-        }
-      }
-      return section;
-    })
-    .filter(Boolean);
+const filteredSections = sections.map((section) => {
+  if (role !== "admin") {
+    if (section.title === "Admin" || section.title === "Reportes") {
+      return { ...section, items: [] };
+    }
+  }
+  return section;
+});
+
 
     const logout = () => {
   localStorage.clear();
