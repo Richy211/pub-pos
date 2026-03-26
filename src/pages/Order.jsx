@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { API } from "../services/api"
+import api from "../services/api";
 
 export default function Order(){
 
@@ -20,7 +20,7 @@ export default function Order(){
   }, [tableId])
 
   const loadOrder = () => {
-    API.get(`/orders/table/${tableId}`)
+    api.get(`/orders/table/${tableId}`)
       .then(res => {
         if(res.data){
           setOrder(res.data)
@@ -32,7 +32,7 @@ export default function Order(){
   }
 
   const loadProducts = () => {
-    API.get("/products")
+    api.get("/products")
       .then(res => setProducts(res.data))
   }
 
@@ -46,7 +46,7 @@ export default function Order(){
   },[order])
 
   const loadItems = (orderId) => {
-    API.get(`/order-items/${orderId}`)
+    api.get(`/order-items/${orderId}`)
       .then(res => setItems(res.data))
   }
 
@@ -54,7 +54,7 @@ export default function Order(){
      ABRIR ORDEN
   ============================== */
   const openOrder = ()=>{
-    API.post("/open-order",{ table_id: tableId })
+    api.post("/open-order",{ table_id: tableId })
       .then(res => setOrder(res.data))
   }
 
@@ -65,7 +65,7 @@ export default function Order(){
 
     if(!order) return
 
-    API.post("/order-items",{
+    api.post("/order-items",{
       order_id: order.id,
       product_id: productId
     })
@@ -77,12 +77,12 @@ export default function Order(){
   ============================== */
  
 const removeItem = (id)=>{
-  API.post("/remove-item",{
+  api.post("/remove-item",{
     order_item_id: id
   })
   .then(() => {
     // 🔥 volver a consultar si la orden sigue existiendo
-    API.get(`/orders/table/${tableId}`)
+    api.get(`/orders/table/${tableId}`)
       .then(res => {
         if(!res.data){
           // 💥 no hay orden → volver a mesas
@@ -96,7 +96,7 @@ const removeItem = (id)=>{
 }
 
 const cancelOrder = () => {
-  API.post("/cancel-order", {
+  api.post("/cancel-order", {
     order_id: order.id
   })
   .then(() => {

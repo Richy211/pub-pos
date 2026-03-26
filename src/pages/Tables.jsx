@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react"
-import { API } from "../services/api"
+import api from "../services/api"
 import { useNavigate } from "react-router-dom"
 
+
 export default function Tables(){
+  
 
  const [tables,setTables] = useState([])
  const navigate = useNavigate()
@@ -18,12 +20,18 @@ export default function Tables(){
 
  },[])
 
- const loadTables = ()=>{
-  API.get("/tables")
-   .then(res=>{
-    setTables(res.data)
-   })
- }
+
+const loadTables = () => {
+  api.get("/tables")
+    .then(res => {
+      setTables(res.data);
+    })
+    .catch(err => {
+      console.error("Error cargando mesas", err);
+    });
+};
+
+
 
 return (
   <div className="min-h-screen p-6 bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-white">

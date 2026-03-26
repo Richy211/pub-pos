@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { API } from "../services/api"
+import  api from "../services/api"
 
 export default function Payment(){
 
@@ -11,7 +11,7 @@ export default function Payment(){
 
   useEffect(()=>{
 
-    API.get(`/order-items/${orderId}`)
+    api.get(`/order-items/${orderId}`)
       .then(res=>{
         setItems(res.data)
       })
@@ -26,7 +26,7 @@ export default function Payment(){
 
     try {
 
-      await API.post("/close-order", {
+      await api.post("/close-order", {
         order_id:Number(orderId)
       })
 

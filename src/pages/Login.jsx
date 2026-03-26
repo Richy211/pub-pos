@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { API } from "../services/api"
+import api from "../services/api"
 import { useNavigate } from "react-router-dom"
 
 export default function Login(){
@@ -9,7 +9,7 @@ export default function Login(){
   const navigate = useNavigate()
 
   const handleLogin = () => {
-    API.post("/login", { username, password })
+    api.post("/login", { username, password })
       .then(res => {
         localStorage.setItem("token", res.data.token)
         localStorage.setItem("role", res.data.role)

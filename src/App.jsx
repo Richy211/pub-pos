@@ -10,7 +10,8 @@ import Products from "./pages/Products";
 import Users from "./pages/Users";
 import Purchases from "./pages/Purchases";
 import Tax from "./pages/Tax";
-
+import NewProduct from "./pages/NewProduct";
+import products from "./pages/Products";
 
 // 🔐 Decodificar token
 function parseJwt(token) {
@@ -62,6 +63,23 @@ function App() {
             <Route path="/purchases" element={role === "admin" ? <Purchases /> : <Tables />} />
             <Route path="/tax" element={role === "admin" ? <Tax /> : <Tables />} />
 
+ <Route
+    path="/products"
+    element={
+      <ProtectedRoute>
+        <Products />
+      </ProtectedRoute>
+    }
+  />
+
+  <Route
+    path="/products/new"
+    element={
+      <ProtectedRoute>
+        <NewProduct />
+      </ProtectedRoute>
+    }
+  />
             
 
           </Routes>

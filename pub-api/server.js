@@ -1,3 +1,5 @@
+console.log("🔥 ESTE ES EL BACKEND CORRECTO");
+
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
@@ -14,11 +16,9 @@ const SECRET = "secreto_super_seguro";
    MIDDLEWARES
 ================================ */
 
-// CORS + JSON
 app.use(cors());
 app.use(express.json());
 
-// 🔐 Verificar token
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
 
@@ -40,7 +40,6 @@ const verifyToken = (req, res, next) => {
    AUTH
 ================================ */
 
-// 🔐 LOGIN
 router.post("/login", (req, res) => {
   const { username, password } = req.body;
 
@@ -55,7 +54,6 @@ router.post("/login", (req, res) => {
       }
 
       const user = result[0];
-
       const validPassword = await bcrypt.compare(password, user.password);
 
       if (!validPassword) {
@@ -63,23 +61,16 @@ router.post("/login", (req, res) => {
       }
 
       const token = jwt.sign(
-        {
-          id: user.id,
-          role: user.role
-        },
+        { id: user.id, role: user.role },
         SECRET,
         { expiresIn: "8h" }
       );
 
-      res.json({
-        token,
-        role: user.role
-      });
+      res.json({ token, role: user.role });
     }
   );
 });
 
-// 👤 REGISTER
 router.post("/register", async (req, res) => {
   const { username, password, role } = req.body;
 
@@ -90,8 +81,35 @@ router.post("/register", async (req, res) => {
     [username, hashedPassword, role],
     (err) => {
       if (err) return res.status(500).json(err);
-
       res.json({ message: "Usuario creado" });
+    }
+  );
+});
+
+/* ===============================
+   PRODUCTS
+================================ */
+
+router.get("/products", (req, res) => {
+  db.query("SELECT * FROM products", (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result);
+  });
+});
+
+router.post("/products", (req, res) => {
+  const { name, price } = req.body;
+
+  db.query(
+    "INSERT INTO products (name, price) VALUES (?, ?)",
+    [name, price],
+    (err, result) => {
+      if (err) return res.status(500).json(err);
+
+      res.status(201).json({
+        message: "Producto creado",
+        id: result.insertId
+      });
     }
   );
 });
@@ -101,6 +119,8 @@ router.post("/register", async (req, res) => {
 ================================ */
 
 router.get("/tables", (req, res) => {
+  console.log("🔥 /tables llamada");
+
   const query = `
     SELECT 
       t.id, 
@@ -135,9 +155,7 @@ router.post("/open-order", (req, res) => {
     "SELECT * FROM orders WHERE table_id = ? AND status = 'open'",
     [table_id],
     (err, result) => {
-      if (result.length > 0) {
-        return res.json(result[0]);
-      }
+      if (result.length > 0) return res.json(result[0]);
 
       db.query(
         "INSERT INTO orders (table_id, status) VALUES (?, 'open')",
@@ -168,7 +186,7 @@ router.get("/orders/table/:tableId", (req, res) => {
   );
 });
 
-// 📦 Items de orden
+// 📦 Items
 router.get("/order-items/:orderId", (req, res) => {
   const query = `
     SELECT oi.*, p.name, p.price
@@ -232,44 +250,7 @@ router.post("/cancel-order", (req, res) => {
   });
 });
 
-// 🧹 Eliminar item
-router.post("/remove-item", (req, res) => {
-  const { order_item_id } = req.body;
-
-  db.query(
-    "SELECT order_id FROM order_items WHERE id = ?",
-    [order_item_id],
-    (err, result) => {
-      if (!result.length) {
-        return res.status(404).json({ message: "Item no encontrado" });
-      }
-
-      const orderId = result[0].order_id;
-
-      db.query("DELETE FROM order_items WHERE id = ?", [order_item_id], () => {
-        db.query(
-          "SELECT COUNT(*) as count FROM order_items WHERE order_id = ?",
-          [orderId],
-          (err, countResult) => {
-            const count = countResult[0].count;
-
-            if (count === 0) {
-              db.query(
-                "UPDATE orders SET status = 'cancelled' WHERE id = ?",
-                [orderId]
-              );
-              return res.json({ message: "Orden cancelada" });
-            }
-
-            res.json({ message: "Item eliminado" });
-          }
-        );
-      });
-    }
-  );
-});
-
-// 💰 Total orden
+// 💰 Total
 router.get("/order-total/:orderId", (req, res) => {
   const query = `
     SELECT SUM(p.price * oi.qty) as total
@@ -279,37 +260,29 @@ router.get("/order-total/:orderId", (req, res) => {
   `;
 
   db.query(query, [req.params.orderId], (err, result) => {
+    if (err) return res.status(500).json(err);
     res.json(result[0]);
   });
 });
 
-// 💳 Cerrar orden
+// 💳 Pagar
 router.post("/close-order", (req, res) => {
+  const { order_id } = req.body;
+
   db.query(
     "UPDATE orders SET status = 'paid' WHERE id = ?",
-    [req.body.order_id],
+    [order_id],
     (err) => {
       if (err) return res.status(500).json(err);
-      res.json({ message: "Orden cerrada" });
+      res.json({ message: "Orden pagada" });
     }
   );
 });
 
 /* ===============================
-   PRODUCTS
+   CASH CLOSE
 ================================ */
 
-router.get("/products", (req, res) => {
-  db.query("SELECT * FROM products", (err, result) => {
-    res.json(result);
-  });
-});
-
-/* ===============================
-   ADMIN (PROTEGIDO)
-================================ */
-
-// 💰 Cierre de caja
 router.get("/cash-close", verifyToken, (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Solo admin" });
@@ -319,22 +292,12 @@ router.get("/cash-close", verifyToken, (req, res) => {
     SELECT 
       COUNT(*) as total_orders,
       SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_orders,
-      SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders,
-      SUM(
-        CASE 
-          WHEN status = 'paid' THEN (
-            SELECT SUM(oi.qty * p.price)
-            FROM order_items oi
-            JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = o.id
-          )
-          ELSE 0
-        END
-      ) as total_sales
-    FROM orders o
+      SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders
+    FROM orders
   `;
 
   db.query(query, (err, result) => {
+    if (err) return res.status(500).json(err);
     res.json(result[0]);
   });
 });
@@ -358,9 +321,40 @@ router.get("/sales-by-day", verifyToken, (req, res) => {
   `;
 
   db.query(query, (err, result) => {
+    if (err) return res.status(500).json(err);
     res.json(result);
   });
 });
+
+router.put("/products/:id", (req, res) => {
+  const { name, price } = req.body;
+
+  db.query(
+    "UPDATE products SET name = ?, price = ? WHERE id = ?",
+    [name, price, req.params.id],
+    (err) => {
+      if (err) return res.status(500).json(err);
+
+      res.json({ message: "Producto actualizado" });
+    }
+  );
+});
+
+router.delete("/products/:id", (req, res) => {
+  db.query(
+    "DELETE FROM products WHERE id = ?",
+    [req.params.id],
+    (err) => {
+      if (err) return res.status(500).json(err);
+
+      res.json({ message: "Producto eliminado" });
+    }
+  );
+});
+
+
+
+
 
 /* ===============================
    SERVER

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API } from "../services/api";
+import api from "../services/api";
 
 import {
   BarChart,
@@ -19,7 +19,7 @@ const CashClose = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    API.get("/cash-close", {
+    api.get("/cash-close", {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -35,7 +35,7 @@ const CashClose = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    API.get("/sales-by-day", {
+    api.get("/sales-by-day", {
       headers: {
         Authorization: `Bearer ${token}`
       }
