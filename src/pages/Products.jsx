@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
-import { getProducts, deleteProduct } from "../services/products";
-import { Link } from "react-router-dom";
+import ProductForm from "../components/ProductForm";
+import {
+  deleteProduct,
+  getProducts,
+  createProduct,
+  updateProduct,
+} from "../services/products";
 
 function Products() {
   const [products, setProducts] = useState([]);
+  const [editingProduct, setEditingProduct] = useState(null);
 
+  // 🔹 Cargar productos
   const loadProducts = async () => {
     try {
       const res = await getProducts();
-      console.log("DATA 👉", res.data);
       setProducts(res.data);
     } catch (error) {
       console.error("Error cargando productos", error);
@@ -19,6 +25,33 @@ function Products() {
     loadProducts();
   }, []);
 
+  // 🔹 Crear
+  const handleCreate = async (data) => {
+    try {
+      await createProduct(data);
+      loadProducts();
+    } catch (error) {
+      console.error("Error creando producto", error);
+    }
+  };
+
+  // 🔹 Editar
+  const handleEdit = (product) => {
+    setEditingProduct(product);
+  };
+
+  // 🔹 Actualizar
+  const handleUpdate = async (data) => {
+    try {
+      await updateProduct(editingProduct.id, data);
+      setEditingProduct(null);
+      loadProducts();
+    } catch (error) {
+      console.error("Error actualizando", error);
+    }
+  };
+
+  // 🔹 Eliminar
   const handleDelete = async (id) => {
     const confirmDelete = confirm("¿Eliminar producto?");
     if (!confirmDelete) return;
@@ -32,20 +65,18 @@ function Products() {
   };
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Productos</h1>
+    <div className="p-6 text-black">
 
-        <Link to="/products/new">
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-            + Crear Producto
-          </button>
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold mb-4">Productos</h1>
 
-      {/* Tabla */}
-      <div className="bg-white shadow-md rounded-xl overflow-hidden">
+      {/* 🔥 FORMULARIO */}
+      <ProductForm
+        onSubmit={editingProduct ? handleUpdate : handleCreate}
+        initialData={editingProduct}
+      />
+
+      {/* 🔥 TABLA */}
+      <div className="bg-white shadow-md rounded-xl overflow-hidden mt-4">
         <table className="w-full text-left">
           <thead className="bg-gray-100 text-gray-600 uppercase text-sm">
             <tr>
@@ -56,35 +87,31 @@ function Products() {
           </thead>
 
           <tbody>
-            {products.length > 0 ? (
-              products.map((p) => (
-                <tr key={p.id} className="border-b hover:bg-gray-50">
+            {products.map((product) => (
+              <tr key={product.id} className="border-t">
+                <td className="px-6 py-3">{product.name}</td>
+                <td className="px-6 py-3">${product.price}</td>
+                <td className="px-6 py-3 space-x-2">
 
-                <td className="px-6 py-4 font-semibold text-gray-900">{p.name}</td>
-                <td className="px-6 py-4 text-gray-600">${Number(p.price).toLocaleString()}</td>
+                  <button
+                    onClick={() => handleEdit(product)}
+                    className="bg-yellow-500 text-white px-3 py-1 rounded"
+                  >
+                    Editar
+                  </button>
 
-                  <td className="px-6 py-4 flex gap-2">
-                    <button className="bg-yellow-400 px-3 py-1 rounded hover:bg-yellow-500">
-                      Editar
-                    </button>
+                  <button
+                    onClick={() => handleDelete(product.id)}
+                    className="bg-red-500 text-white px-3 py-1 rounded"
+                  >
+                    Eliminar
+                  </button>
 
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                    >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td className="px-6 py-4 text-center" colSpan="3">
-                  No hay productos
                 </td>
               </tr>
-            )}
+            ))}
           </tbody>
+
         </table>
       </div>
     </div>

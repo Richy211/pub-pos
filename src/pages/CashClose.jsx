@@ -57,9 +57,11 @@ const CashClose = () => {
 
   // 📈 FORMATEAR VENTAS POR DÍA
   const dailyChart = salesByDay.map(item => ({
-    name: item.date,
-    value: item.total
+    name: item.date?.split("T")[0],
+    value: Number(item.total) || 0
   }));
+
+
 
   if (!data) return <p>Cargando cierre de caja...</p>;
 
@@ -107,14 +109,17 @@ const CashClose = () => {
       <div className="bg-slate-800 p-4 rounded mt-6">
         <h2 className="mb-4">💰 Ventas</h2>
 
-        <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={salesChart}>
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="value" fill="#f97316" />
-          </BarChart>
-        </ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={300}>
+  <BarChart data={dailyChart}>
+    <XAxis dataKey="name" />
+    <YAxis />
+    <Tooltip />
+    <Bar dataKey="value" fill="#3b82f6" minPointSize={10} />
+  </BarChart>
+</ResponsiveContainer>
+
+
+
       </div>
 
       {/* 📈 VENTAS POR DÍA */}

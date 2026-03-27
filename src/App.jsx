@@ -63,23 +63,9 @@ function App() {
             <Route path="/purchases" element={role === "admin" ? <Purchases /> : <Tables />} />
             <Route path="/tax" element={role === "admin" ? <Tax /> : <Tables />} />
 
- <Route
-    path="/products"
-    element={
-      <ProtectedRoute>
-        <Products />
-      </ProtectedRoute>
-    }
-  />
+            <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute> }/>
 
-  <Route
-    path="/products/new"
-    element={
-      <ProtectedRoute>
-        <NewProduct />
-      </ProtectedRoute>
-    }
-  />
+            <Route path="/products/new" element={<ProtectedRoute> <NewProduct /> </ProtectedRoute> } />
             
 
           </Routes>
