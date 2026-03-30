@@ -205,32 +205,69 @@ router.get("/order-items/:orderId", (req, res) => {
 router.post("/order-items", (req, res) => {
   const { order_id, product_id } = req.body;
 
+  // 🔍 1. Verificar stock
   db.query(
-    "SELECT * FROM order_items WHERE order_id = ? AND product_id = ?",
-    [order_id, product_id],
+    "SELECT stock FROM products WHERE id = ?",
+    [product_id],
     (err, result) => {
-      if (result.length > 0) {
-        db.query(
-          "UPDATE order_items SET qty = qty + 1 WHERE id = ?",
-          [result[0].id],
-          (err) => {
-            if (err) return res.status(500).json(err);
-            res.json({ message: "Cantidad actualizada" });
-          }
-        );
-      } else {
-        db.query(
-          "INSERT INTO order_items (order_id, product_id, qty) VALUES (?, ?, 1)",
-          [order_id, product_id],
-          (err) => {
-            if (err) return res.status(500).json(err);
-            res.json({ message: "Producto agregado" });
-          }
-        );
+      if (err) return res.status(500).json(err);
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: "Producto no existe" });
       }
+
+      const stock = result[0].stock;
+
+      if (stock <= 0) {
+        return res.status(400).json({ message: "Sin stock disponible" });
+      }
+
+      // 🔄 2. Ver si ya existe en la orden
+      db.query(
+        "SELECT * FROM order_items WHERE order_id = ? AND product_id = ?",
+        [order_id, product_id],
+        (err, items) => {
+          if (err) return res.status(500).json(err);
+
+          const updateStock = () => {
+            db.query(
+              "UPDATE products SET stock = stock - 1 WHERE id = ?",
+              [product_id]
+            );
+          };
+
+          if (items.length > 0) {
+            db.query(
+              "UPDATE order_items SET qty = qty + 1 WHERE id = ?",
+              [items[0].id],
+              (err) => {
+                if (err) return res.status(500).json(err);
+
+                updateStock();
+
+                res.json({ message: "Cantidad actualizada" });
+              }
+            );
+          } else {
+            db.query(
+              "INSERT INTO order_items (order_id, product_id, qty) VALUES (?, ?, 1)",
+              [order_id, product_id],
+              (err) => {
+                if (err) return res.status(500).json(err);
+
+                updateStock();
+
+                res.json({ message: "Producto agregado" });
+              }
+            );
+          }
+        }
+      );
     }
   );
 });
+
+
 
 // ❌ Cancelar orden
 router.post("/cancel-order", (req, res) => {
@@ -352,9 +389,66 @@ router.delete("/products/:id", (req, res) => {
   );
 });
 
+router.post("/purchases", verifyToken, (req, res) => {
 
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Solo admin puede registrar compras" });
+  }
 
+  const { supplier_id, products } = req.body;
 
+  if (!supplier_id || !products || products.length === 0) {
+    return res.status(400).json({ error: "Datos incompletos" });
+  }
+
+  let totalNet = 0;
+
+  products.forEach(item => {
+    totalNet += item.quantity * item.unit_price;
+  });
+
+  const iva = totalNet * 0.19;
+  const total = totalNet + iva;
+
+  db.query(
+    `INSERT INTO purchases 
+    (supplier_id, date, total_net, iva, total, status)
+    VALUES (?, NOW(), ?, ?, ?, 'recibido')`,
+    [supplier_id, totalNet, iva, total],
+    (err, result) => {
+      if (err) return res.status(500).json(err);
+
+      const purchaseId = result.insertId;
+
+      let completed = 0;
+
+      products.forEach(item => {
+        const subtotal = item.quantity * item.unit_price;
+
+        db.query(
+          `INSERT INTO purchase_details
+          (purchase_id, product_id, quantity, unit_price_net, subtotal_net)
+          VALUES (?, ?, ?, ?, ?)`,
+          [purchaseId, item.product_id, item.quantity, item.unit_price, subtotal]
+        );
+
+        db.query(
+          `UPDATE products SET stock = stock + ? WHERE id = ?`,
+          [item.quantity, item.product_id],
+          () => {
+            completed++;
+            if (completed === products.length) {
+              res.json({
+                message: "Compra registrada correctamente",
+                purchaseId
+              });
+            }
+          }
+        );
+      });
+    }
+  );
+});
 
 /* ===============================
    SERVER

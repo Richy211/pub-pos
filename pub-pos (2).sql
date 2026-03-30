@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 26-03-2026 a las 15:07:53
+-- Tiempo de generación: 30-03-2026 a las 17:21:28
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.1.25
 
@@ -100,8 +100,17 @@ INSERT INTO `orders` (`id`, `table_id`, `status`, `created_at`) VALUES
 (59, 3, 'paid', '2026-03-25 15:43:00'),
 (60, 2, 'paid', '2026-03-25 16:18:49'),
 (61, 2, 'cancelled', '2026-03-25 19:11:17'),
-(62, 1, 'open', '2026-03-25 20:06:49'),
-(63, 3, 'open', '2026-03-25 20:06:56');
+(62, 1, 'paid', '2026-03-25 20:06:49'),
+(63, 3, 'paid', '2026-03-25 20:06:56'),
+(64, 2, 'cancelled', '2026-03-26 19:56:21'),
+(65, 2, 'paid', '2026-03-26 20:15:52'),
+(66, 3, 'paid', '2026-03-26 20:16:43'),
+(67, 4, 'paid', '2026-03-26 20:25:22'),
+(68, 3, 'paid', '2026-03-27 16:26:17'),
+(69, 1, 'open', '2026-03-27 21:16:19'),
+(70, 2, 'open', '2026-03-27 21:31:39'),
+(71, 3, 'cancelled', '2026-03-30 15:13:29'),
+(72, 3, 'open', '2026-03-30 15:14:35');
 
 -- --------------------------------------------------------
 
@@ -219,9 +228,24 @@ INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `qty`) VALUES
 (427, 60, 2, 2),
 (428, 60, 1, 1),
 (432, 62, 3, 1),
-(433, 62, 2, 1),
+(433, 62, 2, 2),
 (434, 63, 2, 2),
-(435, 63, 1, 2);
+(435, 63, 1, 2),
+(436, 62, 4, 1),
+(437, 62, 5, 1),
+(441, 65, 6, 1),
+(442, 65, 1, 1),
+(443, 66, 1, 1),
+(444, 66, 2, 1),
+(445, 66, 3, 1),
+(446, 68, 3, 1),
+(447, 68, 9, 1),
+(448, 68, 7, 1),
+(449, 67, 1, 1),
+(450, 67, 5, 1),
+(451, 70, 13, 1),
+(452, 70, 7, 1),
+(453, 70, 2, 1);
 
 -- --------------------------------------------------------
 
@@ -242,7 +266,11 @@ CREATE TABLE `products` (
 INSERT INTO `products` (`id`, `name`, `price`) VALUES
 (1, 'Cerveza', 3000.00),
 (2, 'Papas fritas', 4000.00),
-(3, 'Hamburguesa', 7000.00);
+(3, 'Hamburguesa', 7000.00),
+(5, 'Chorrillanas', 8000.00),
+(7, 'Completos', 4000.00),
+(11, 'Pisco Sour', 7000.00),
+(12, 'Coca cola', 3000.00);
 
 -- --------------------------------------------------------
 
@@ -329,19 +357,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT de la tabla `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=73;
 
 --
 -- AUTO_INCREMENT de la tabla `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=436;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=455;
 
 --
 -- AUTO_INCREMENT de la tabla `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT de la tabla `tables`
