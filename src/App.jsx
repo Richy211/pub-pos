@@ -12,6 +12,7 @@ import Purchases from "./pages/Purchases";
 import Tax from "./pages/Tax";
 import NewProduct from "./pages/NewProduct";
 import products from "./pages/Products";
+import AdminPurchases from "./pages/AdminPurchases";
 
 // 🔐 Decodificar token
 function parseJwt(token) {
@@ -66,6 +67,7 @@ function App() {
             <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute> }/>
 
             <Route path="/products/new" element={<ProtectedRoute> <NewProduct /> </ProtectedRoute> } />
+            <Route path="/admin/purchases" element={<AdminPurchases />} />
             
 
           </Routes>

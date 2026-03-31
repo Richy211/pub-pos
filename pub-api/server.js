@@ -1,4 +1,4 @@
-console.log("🔥 ESTE ES EL BACKEND CORRECTO");
+console.log("🔥 ESTE ES EL BACKEND CORRECTO Y COMPLETO");
 
 const express = require("express");
 const jwt = require("jsonwebtoken");
@@ -13,7 +13,7 @@ const router = express.Router();
 const SECRET = "secreto_super_seguro";
 
 /* ===============================
-   MIDDLEWARES
+    MIDDLEWARES
 ================================ */
 
 app.use(cors());
@@ -37,7 +37,7 @@ const verifyToken = (req, res, next) => {
 };
 
 /* ===============================
-   AUTH
+    AUTH
 ================================ */
 
 router.post("/login", (req, res) => {
@@ -87,7 +87,7 @@ router.post("/register", async (req, res) => {
 });
 
 /* ===============================
-   PRODUCTS
+    PRODUCTS
 ================================ */
 
 router.get("/products", (req, res) => {
@@ -114,8 +114,32 @@ router.post("/products", (req, res) => {
   );
 });
 
+router.put("/products/:id", (req, res) => {
+  const { name, price } = req.body;
+
+  db.query(
+    "UPDATE products SET name = ?, price = ? WHERE id = ?",
+    [name, price, req.params.id],
+    (err) => {
+      if (err) return res.status(500).json(err);
+      res.json({ message: "Producto actualizado" });
+    }
+  );
+});
+
+router.delete("/products/:id", (req, res) => {
+  db.query(
+    "DELETE FROM products WHERE id = ?",
+    [req.params.id],
+    (err) => {
+      if (err) return res.status(500).json(err);
+      res.json({ message: "Producto eliminado" });
+    }
+  );
+});
+
 /* ===============================
-   TABLES
+    TABLES (Aquí están de vuelta)
 ================================ */
 
 router.get("/tables", (req, res) => {
@@ -144,10 +168,9 @@ router.get("/tables", (req, res) => {
 });
 
 /* ===============================
-   ORDERS
+    ORDERS
 ================================ */
 
-// 🟢 Abrir orden
 router.post("/open-order", (req, res) => {
   const { table_id } = req.body;
 
@@ -155,6 +178,7 @@ router.post("/open-order", (req, res) => {
     "SELECT * FROM orders WHERE table_id = ? AND status = 'open'",
     [table_id],
     (err, result) => {
+      if (err) return res.status(500).json(err);
       if (result.length > 0) return res.json(result[0]);
 
       db.query(
@@ -174,7 +198,6 @@ router.post("/open-order", (req, res) => {
   );
 });
 
-// 📦 Orden por mesa
 router.get("/orders/table/:tableId", (req, res) => {
   db.query(
     "SELECT * FROM orders WHERE table_id = ? AND status = 'open'",
@@ -186,7 +209,6 @@ router.get("/orders/table/:tableId", (req, res) => {
   );
 });
 
-// 📦 Items
 router.get("/order-items/:orderId", (req, res) => {
   const query = `
     SELECT oi.*, p.name, p.price
@@ -201,11 +223,9 @@ router.get("/order-items/:orderId", (req, res) => {
   });
 });
 
-// ➕ Agregar producto
 router.post("/order-items", (req, res) => {
   const { order_id, product_id } = req.body;
 
-  // 🔍 1. Verificar stock
   db.query(
     "SELECT stock FROM products WHERE id = ?",
     [product_id],
@@ -222,7 +242,6 @@ router.post("/order-items", (req, res) => {
         return res.status(400).json({ message: "Sin stock disponible" });
       }
 
-      // 🔄 2. Ver si ya existe en la orden
       db.query(
         "SELECT * FROM order_items WHERE order_id = ? AND product_id = ?",
         [order_id, product_id],
@@ -230,10 +249,7 @@ router.post("/order-items", (req, res) => {
           if (err) return res.status(500).json(err);
 
           const updateStock = () => {
-            db.query(
-              "UPDATE products SET stock = stock - 1 WHERE id = ?",
-              [product_id]
-            );
+            db.query("UPDATE products SET stock = stock - 1 WHERE id = ?", [product_id]);
           };
 
           if (items.length > 0) {
@@ -242,9 +258,7 @@ router.post("/order-items", (req, res) => {
               [items[0].id],
               (err) => {
                 if (err) return res.status(500).json(err);
-
                 updateStock();
-
                 res.json({ message: "Cantidad actualizada" });
               }
             );
@@ -254,9 +268,7 @@ router.post("/order-items", (req, res) => {
               [order_id, product_id],
               (err) => {
                 if (err) return res.status(500).json(err);
-
                 updateStock();
-
                 res.json({ message: "Producto agregado" });
               }
             );
@@ -267,9 +279,6 @@ router.post("/order-items", (req, res) => {
   );
 });
 
-
-
-// ❌ Cancelar orden
 router.post("/cancel-order", (req, res) => {
   const { order_id } = req.body;
 
@@ -287,7 +296,6 @@ router.post("/cancel-order", (req, res) => {
   });
 });
 
-// 💰 Total
 router.get("/order-total/:orderId", (req, res) => {
   const query = `
     SELECT SUM(p.price * oi.qty) as total
@@ -302,7 +310,6 @@ router.get("/order-total/:orderId", (req, res) => {
   });
 });
 
-// 💳 Pagar
 router.post("/close-order", (req, res) => {
   const { order_id } = req.body;
 
@@ -317,7 +324,104 @@ router.post("/close-order", (req, res) => {
 });
 
 /* ===============================
-   CASH CLOSE
+    PURCHASES (Corregido y Seguro)
+================================ */
+router.post("/purchases", verifyToken, (req, res) => {
+  console.log("🔥 BODY:", req.body);
+
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Solo admin puede registrar compras" });
+  }
+
+  const { supplier_id, products } = req.body;
+
+  if (!supplier_id || !products || products.length === 0) {
+    return res.status(400).json({ error: "Datos incompletos" });
+  }
+
+  for (let item of products) {
+    if (!item.product_id || !item.quantity || !item.unit_price) {
+      return res.status(400).json({ error: "Producto incompleto" });
+    }
+
+    if (isNaN(item.product_id) || isNaN(item.quantity) || isNaN(item.unit_price)) {
+      return res.status(400).json({ error: "Valores inválidos" });
+    }
+  }
+
+  let totalNet = 0;
+  products.forEach(item => {
+    totalNet += item.quantity * item.unit_price;
+  });
+
+  const iva = totalNet * 0.19;
+  const total = totalNet + iva;
+
+  db.query(
+    `INSERT INTO purchases (supplier_id, date, total_net, iva, total, status) 
+     VALUES (?, NOW(), ?, ?, ?, 'recibido')`,
+    [supplier_id, totalNet, iva, total],
+    (err, result) => {
+      if (err) {
+        console.error("❌ ERROR PURCHASE:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      const purchaseId = result.insertId;
+
+      let completed = 0;
+      let errorOcurred = false;
+
+      products.forEach(item => {
+        const subtotal = item.quantity * item.unit_price;
+
+        db.query(
+          `INSERT INTO purchase_details 
+          (purchase_id, product_id, quantity, unit_price_net, subtotal_net) 
+          VALUES (?, ?, ?, ?, ?)`,
+          [purchaseId, item.product_id, item.quantity, item.unit_price, subtotal],
+          (errDetail) => {
+            if (errDetail && !errorOcurred) {
+              errorOcurred = true;
+              console.error("❌ ERROR DETALLE:", errDetail);
+              return res.status(500).json({ error: errDetail.message });
+            }
+
+            db.query(
+              `UPDATE products SET stock = stock + ? WHERE id = ?`,
+              [item.quantity, item.product_id],
+              (errStock) => {
+                if (errStock && !errorOcurred) {
+                  errorOcurred = true;
+                  console.error("❌ ERROR STOCK:", errStock);
+                  return res.status(500).json({ error: errStock.message });
+                }
+
+                completed++;
+
+                if (completed === products.length && !errorOcurred) {
+                  console.log("✅ COMPRA COMPLETA:", purchaseId);
+                  res.json({
+                    message: "Compra registrada correctamente",
+                    purchaseId
+                  });
+                }
+              }
+            );
+          }
+        );
+      });
+    }
+  );
+});
+
+
+
+
+
+
+/* ===============================
+    REPORTS & SALES
 ================================ */
 
 router.get("/cash-close", verifyToken, (req, res) => {
@@ -339,7 +443,6 @@ router.get("/cash-close", verifyToken, (req, res) => {
   });
 });
 
-// 📈 Ventas por día
 router.get("/sales-by-day", verifyToken, (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Solo admin" });
@@ -363,95 +466,8 @@ router.get("/sales-by-day", verifyToken, (req, res) => {
   });
 });
 
-router.put("/products/:id", (req, res) => {
-  const { name, price } = req.body;
-
-  db.query(
-    "UPDATE products SET name = ?, price = ? WHERE id = ?",
-    [name, price, req.params.id],
-    (err) => {
-      if (err) return res.status(500).json(err);
-
-      res.json({ message: "Producto actualizado" });
-    }
-  );
-});
-
-router.delete("/products/:id", (req, res) => {
-  db.query(
-    "DELETE FROM products WHERE id = ?",
-    [req.params.id],
-    (err) => {
-      if (err) return res.status(500).json(err);
-
-      res.json({ message: "Producto eliminado" });
-    }
-  );
-});
-
-router.post("/purchases", verifyToken, (req, res) => {
-
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Solo admin puede registrar compras" });
-  }
-
-  const { supplier_id, products } = req.body;
-
-  if (!supplier_id || !products || products.length === 0) {
-    return res.status(400).json({ error: "Datos incompletos" });
-  }
-
-  let totalNet = 0;
-
-  products.forEach(item => {
-    totalNet += item.quantity * item.unit_price;
-  });
-
-  const iva = totalNet * 0.19;
-  const total = totalNet + iva;
-
-  db.query(
-    `INSERT INTO purchases 
-    (supplier_id, date, total_net, iva, total, status)
-    VALUES (?, NOW(), ?, ?, ?, 'recibido')`,
-    [supplier_id, totalNet, iva, total],
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-
-      const purchaseId = result.insertId;
-
-      let completed = 0;
-
-      products.forEach(item => {
-        const subtotal = item.quantity * item.unit_price;
-
-        db.query(
-          `INSERT INTO purchase_details
-          (purchase_id, product_id, quantity, unit_price_net, subtotal_net)
-          VALUES (?, ?, ?, ?, ?)`,
-          [purchaseId, item.product_id, item.quantity, item.unit_price, subtotal]
-        );
-
-        db.query(
-          `UPDATE products SET stock = stock + ? WHERE id = ?`,
-          [item.quantity, item.product_id],
-          () => {
-            completed++;
-            if (completed === products.length) {
-              res.json({
-                message: "Compra registrada correctamente",
-                purchaseId
-              });
-            }
-          }
-        );
-      });
-    }
-  );
-});
-
 /* ===============================
-   SERVER
+    SERVER CONFIG
 ================================ */
 
 app.use("/", router);
