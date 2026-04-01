@@ -11,7 +11,6 @@ import Users from "./pages/Users";
 import Purchases from "./pages/Purchases";
 import Tax from "./pages/Tax";
 import NewProduct from "./pages/NewProduct";
-import products from "./pages/Products";
 import AdminPurchases from "./pages/AdminPurchases";
 
 // 🔐 Decodificar token
@@ -50,25 +49,77 @@ function App() {
         <div className="bg-slate-900 rounded-2xl p-6 shadow-lg min-h-full">
 
           <Routes>
-            {/* 🔓 RUTAS LIBRES (admin + garzón) */}
+
+            {/* 🔓 RUTAS LIBRES */}
             <Route path="/" element={<Tables />} />
             <Route path="/tables" element={<Tables />} />
             <Route path="/order/:tableId" element={<Order />} />
             <Route path="/payment/:orderId" element={<Payment />} />
-            <Route path="/cash-close"  element={role === "admin" ? <CashClose /> : <Tables />} />
 
-            <Route path="/cash-close"  element={<ProtectedRoute roles={["admin"]}><CashClose /></ProtectedRoute> } />
+            {/* 🔐 SOLO ADMIN */}
+            <Route 
+              path="/cash-close"  
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <CashClose />
+                </ProtectedRoute>
+              } 
+            />
 
-            <Route path="/products" element={role === "admin" ? <Products /> : <Tables />} />
-            <Route path="/users" element={role === "admin" ? <Users /> : <Tables />} />
-            <Route path="/purchases" element={role === "admin" ? <Purchases /> : <Tables />} />
-            <Route path="/tax" element={role === "admin" ? <Tax /> : <Tables />} />
+            <Route 
+              path="/products" 
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <Products />
+                </ProtectedRoute>
+              } 
+            />
 
-            <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute> }/>
+            <Route 
+              path="/users" 
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <Users />
+                </ProtectedRoute>
+              } 
+            />
 
-            <Route path="/products/new" element={<ProtectedRoute> <NewProduct /> </ProtectedRoute> } />
-            <Route path="/admin/purchases" element={<AdminPurchases />} />
-            
+            <Route 
+              path="/purchases" 
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <Purchases />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/tax" 
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <Tax />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* OTROS */}
+            <Route 
+              path="/products/new" 
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <NewProduct />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/admin/purchases" 
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <AdminPurchases />
+                </ProtectedRoute>
+              } 
+            />
 
           </Routes>
 

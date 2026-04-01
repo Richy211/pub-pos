@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
   ClipboardList,
@@ -43,52 +43,48 @@ const Sidebar = () => {
     }
   }, [dark]);
 
-  const isActive = (path) => location.pathname.startsWith(path);
+  // 📌 SECCIONES
+  const sections = [
+    {
+      title: "Ventas",
+      items: [
+        { name: "Mesas", path: "/tables", icon: <LayoutGrid size={20} /> },
+        { name: "Órdenes", path: "/order", icon: <ClipboardList size={20} /> },
+        { name: "Pagos", path: "/payment", icon: <CreditCard size={20} /> },
+      ],
+    },
+    {
+      title: "Reportes",
+      items: [
+        { name: "Ventas", path: "/reports", icon: <BarChart3 size={20} /> },
+      ],
+    },
+    {
+      title: "Admin",
+      items: [
+        { name: "Productos", path: "/products", icon: <ClipboardList size={20} /> },
+        { name: "Usuarios", path: "/users", icon: <LayoutGrid size={20} /> },
+        { name: "Compras", path: "/purchases", icon: <CreditCard size={20} /> },
+        { name: "IVA", path: "/tax", icon: <BarChart3 size={20} /> },
+        { name: "Configuración", path: "/settings", icon: <Settings size={20} /> },
+      ],
+    },
+  ];
 
-  // 📌 SECCIONES BASE
- const sections = [
-  {
-    title: "Ventas",
-    items: [
-      { name: "Mesas", path: "/tables", icon: <LayoutGrid size={20} /> },
-      { name: "Órdenes", path: "/order", icon: <ClipboardList size={20} /> },
-      { name: "Pagos", path: "/payment", icon: <CreditCard size={20} /> },
-    ],
-  },
-  {
-    title: "Reportes",
-    items: [
-      { name: "Ventas", path: "/reports", icon: <BarChart3 size={20} /> },
-    ],
-  },
-  {
-    title: "Admin",
-    items: [
-      { name: "Productos", path: "/products", icon: <ClipboardList size={20} /> },
-      { name: "Usuarios", path: "/users", icon: <LayoutGrid size={20} /> },
-      { name: "Compras", path: "/purchases", icon: <CreditCard size={20} /> },
-      { name: "IVA", path: "/tax", icon: <BarChart3 size={20} /> },
-      { name: "Configuración", path: "/settings", icon: <Settings size={20} /> },
-    ],
-  },
-];
-
-
-  // 🔐 FILTRO REAL (ELIMINA SECCIONES COMPLETAS)
-const filteredSections = sections.map((section) => {
-  if (role !== "admin") {
-    if (section.title === "Admin" || section.title === "Reportes") {
-      return { ...section, items: [] };
+  // 🔐 FILTRO POR ROL
+  const filteredSections = sections.map((section) => {
+    if (role !== "admin") {
+      if (section.title === "Admin" || section.title === "Reportes") {
+        return { ...section, items: [] };
+      }
     }
-  }
-  return section;
-});
+    return section;
+  });
 
-
-    const logout = () => {
-  localStorage.clear();
-  window.location.href = "/login";
-};
+  const logout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
+  };
 
   return (
     <div
@@ -125,21 +121,24 @@ const filteredSections = sections.map((section) => {
             <ul className="space-y-2">
               {section.items.map((item) => (
                 <li key={item.path} className="relative group">
-                  <Link
+                  <NavLink
                     to={item.path}
-                    className={`
+                    end
+                    className={({ isActive }) =>
+                      `
                       flex items-center gap-3 p-3 rounded-lg transition-all
                       ${
-                        isActive(item.path)
+                        isActive
                           ? "bg-slate-300 dark:bg-slate-700"
                           : "hover:bg-slate-200 dark:hover:bg-slate-800"
                       }
                       ${collapsed ? "justify-center" : ""}
-                    `}
+                    `
+                    }
                   >
                     {item.icon}
                     {!collapsed && <span>{item.name}</span>}
-                  </Link>
+                  </NavLink>
 
                   {/* TOOLTIP */}
                   {collapsed && (
@@ -159,31 +158,28 @@ const filteredSections = sections.map((section) => {
       </div>
 
       {/* FOOTER */}
+      <div className="mt-auto pt-6 space-y-2">
 
-<div className="mt-auto pt-6 space-y-2">
+        {/* 🌗 TEMA */}
+        <button
+          onClick={() => setDark(!dark)}
+          className="w-full flex items-center justify-center gap-2 p-2 rounded-lg 
+          bg-slate-800 hover:bg-slate-700 transition"
+        >
+          {dark ? "☀️" : "🌙"}
+          {!collapsed && (dark ? "Modo Claro" : "Modo Oscuro")}
+        </button>
 
-  {/* 🌗 TEMA */}
-  <button
-    onClick={() => setDark(!dark)}
-    className="w-full flex items-center justify-center gap-2 p-2 rounded-lg 
-    bg-slate-800 hover:bg-slate-700 transition"
-  >
-    {dark ? "☀️" : "🌙"}
-    {!collapsed && (dark ? "Modo Claro" : "Modo Oscuro")}
-  </button>
+        {/* 🚪 LOGOUT */}
+        <button
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-2 p-2 rounded-lg 
+          bg-red-600 hover:bg-red-700 transition"
+        >
+          🚪 {!collapsed && "Cerrar sesión"}
+        </button>
 
-  {/* 🚪 LOGOUT */}
-  <button
-    onClick={logout}
-    className="w-full flex items-center justify-center gap-2 p-2 rounded-lg 
-    bg-red-600 hover:bg-red-700 transition"
-  >
-    🚪 {!collapsed && "Cerrar sesión"}
-  </button>
-
-</div>
-
-
+      </div>
     </div>
   );
 };
