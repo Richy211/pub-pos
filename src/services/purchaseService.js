@@ -9,3 +9,13 @@ export const createPurchase = (data, token) => {
     },
   });
 };
+
+export const getSuppliers = async () => {
+  const res = await fetch("http://localhost:5000/suppliers");
+  return res.json();
+};
+
+export const getProducts = async () => {
+  const res = await fetch("http://localhost:5000/products");
+  return res.json();
+};

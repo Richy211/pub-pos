@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPurchase } from "../services/purchaseService";
+import { getSuppliers, getProducts } from "../services/purchaseService";
 
 const PurchaseForm = () => {
   const [supplierId, setSupplierId] = useState("");
@@ -54,30 +55,59 @@ const PurchaseForm = () => {
     }
   };
 
+  useEffect(() => {
+  const loadData = async () => {
+    const suppliersData = await getSuppliers();
+    const productsData = await getProducts();
+
+    setSuppliers(suppliersData);
+    setProductsList(productsData);
+  };
+
+  loadData();
+}, []);
+
+const [suppliers, setSuppliers] = useState([]);
+const [productsList, setProductsList] = useState([]);
+
   return (
     <div className="space-y-4">
 
       {/* Proveedor */}
-      <input
-        type="number"
-        value={supplierId}
-        onChange={(e) => setSupplierId(e.target.value)}
-        className="border p-2 bg-white text-black w-full"
-      />
+  <select
+  value={supplierId}
+  onChange={(e) => setSupplierId(e.target.value)}
+  className="border p-2 w-full"
+>
+  <option value="">Selecciona proveedor</option>
+  {suppliers.map((s) => (
+    <option key={s.id} value={s.id}>
+      {s.name}
+    </option>
+  ))}
+</select>
 
       {/* Agregar producto */}
       <div className="grid grid-cols-3 gap-2">
-        <input
-          type="number"
-          value={currentProduct.product_id}
-          onChange={(e) =>
-            setCurrentProduct({ 
-              ...currentProduct, 
-              product_id: 
-              e.target.value, })
-          }
-         className="border p-2 bg-white text-black w-full"
-        />
+       <select
+  value={currentProduct.product_id}
+  onChange={(e) =>
+    setCurrentProduct({
+      ...currentProduct,
+      product_id: e.target.value,
+    })
+  }
+  className="border p-2"
+>
+  <option value="">Producto</option>
+  {productsList.map((p) => (
+    <option key={p.id} value={p.id}>
+      {p.name}
+    </option>
+  ))}
+</select>
+
+
         <input
           type="number"
           placeholder="Cantidad"

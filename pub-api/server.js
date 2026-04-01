@@ -466,6 +466,13 @@ router.get("/sales-by-day", verifyToken, (req, res) => {
   });
 });
 
+router.get("/suppliers", (req, res) => {
+  db.query("SELECT * FROM suppliers", (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result);
+  });
+});
+
 /* ===============================
     SERVER CONFIG
 ================================ */
