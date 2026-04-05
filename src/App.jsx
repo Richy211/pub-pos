@@ -13,6 +13,7 @@ import Tax from "./pages/Tax";
 import NewProduct from "./pages/NewProduct";
 import AdminPurchases from "./pages/AdminPurchases";
 import PurchasesHistory from "./pages/PurchasesHistory";
+import { Navigate } from "react-router-dom";
 
 // 🔐 Decodificar token
 function parseJwt(token) {
@@ -30,7 +31,9 @@ function App() {
 
   const user = JSON.parse(localStorage.getItem("user"));
   const role = user?.role?.toLowerCase();
-console.log("USER EN APP:", user);
+
+
+/* console.log("USER EN APP:", user); */
 
 
   // 🔐 si no hay token → login
@@ -124,6 +127,15 @@ console.log("USER EN APP:", user);
             />
 
           <Route path="/purchases/history" element={<PurchasesHistory />} />
+
+          <Route 
+  path="/" 
+  element={
+    role === "admin" 
+      ? <Navigate to="/products" /> 
+      : <Tables />
+  } 
+/>
 
 
           </Routes>

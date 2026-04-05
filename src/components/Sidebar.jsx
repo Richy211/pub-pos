@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   LayoutGrid,
   ClipboardList,
@@ -9,24 +9,26 @@ import {
   Menu,
 } from "lucide-react";
 
-// 🔐 Decodificar token
-function parseJwt(token) {
-  try {
-    return JSON.parse(atob(token.split(".")[1]));
-  } catch {
-    return null;
-  }
-}
-
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [dark, setDark] = useState(true);
+  const [user, setUser] = useState(null);
 
-  const location = useLocation();
+  // 🔥 CARGAR USUARIO CORRECTAMENTE
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
 
-  // 🔐 usuario y rol
-  const token = localStorage.getItem("token");
-  const user = token ? parseJwt(token) : null;
+    if (storedUser && storedUser !== "undefined") {
+      try {
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+      } catch (e) {
+        console.error("Error parseando user:", e);
+        setUser(null);
+      }
+    }
+  }, []);
+
   const role = user?.role?.toLowerCase();
 
   // guardar estado sidebar
@@ -49,8 +51,6 @@ const Sidebar = () => {
       title: "Ventas",
       items: [
         { name: "Mesas", path: "/tables", icon: <LayoutGrid size={20} /> },
-        { name: "Órdenes", path: "/order", icon: <ClipboardList size={20} /> },
-        { name: "Pagos", path: "/payment", icon: <CreditCard size={20} /> },
       ],
     },
     {
@@ -66,21 +66,23 @@ const Sidebar = () => {
         { name: "Usuarios", path: "/users", icon: <LayoutGrid size={20} /> },
         { name: "Compras", path: "/purchases", icon: <CreditCard size={20} /> },
         { name: "IVA", path: "/tax", icon: <BarChart3 size={20} /> },
-        { name: "Configuración", path: "/settings", icon: <Settings size={20} /> },
         { name: "Historial Compras", path: "/purchases/history", icon: <BarChart3 size={20} /> },
+        { name: "Configuración", path: "/settings", icon: <Settings size={20} /> },
       ],
     },
   ];
 
-  // 🔐 FILTRO POR ROL
-  const filteredSections = sections.map((section) => {
-    if (role !== "admin") {
-      if (section.title === "Admin" || section.title === "Reportes") {
-        return { ...section, items: [] };
+  // 🔥 FILTRO REAL POR ROL
+  const filteredSections = sections
+    .map((section) => {
+      if (role !== "admin") {
+        if (section.title === "Admin" || section.title === "Reportes") {
+          return null;
+        }
       }
-    }
-    return section;
-  });
+      return section;
+    })
+    .filter(Boolean);
 
   const logout = () => {
     localStorage.clear();
@@ -108,6 +110,15 @@ const Sidebar = () => {
           <Menu size={20} />
         </button>
       </div>
+
+      {/* 🔥 INFO USUARIO */}
+      {!collapsed && user && (
+        <div className="mb-4 p-3 bg-slate-200 dark:bg-slate-800 rounded-lg text-sm">
+          👤 {user.username}
+          <br />
+          <span className="text-xs text-gray-400">{user.role}</span>
+        </div>
+      )}
 
       {/* SECCIONES */}
       <div className="space-y-6">
