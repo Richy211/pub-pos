@@ -8,17 +8,21 @@ export default function Login(){
   const [password,setPassword] = useState("")
   const navigate = useNavigate()
 
-  const handleLogin = () => {
-    api.post("/login", { username, password })
-      .then(res => {
-        localStorage.setItem("token", res.data.token)
-        localStorage.setItem("role", res.data.role)
-        navigate("/")
-      })
-      .catch(() => {
-        alert("Credenciales incorrectas")
-      })
-  }
+const handleLogin = () => {
+  api.post("/login", { username, password })
+    .then(res => {
+      console.log("LOGIN OK:", res.data);
+      localStorage.setItem("token", res.data.token);
+      navigate("/");
+    })
+    .catch(err => {
+      console.error("ERROR LOGIN:", err.response?.data || err.message);
+      alert("Error login");
+    });
+};
+
+
+
 
   // 🔥 LOGIN RÁPIDO (SOLO DESARROLLO)
   const loginAs = (role) => {

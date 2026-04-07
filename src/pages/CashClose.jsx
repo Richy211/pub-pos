@@ -92,18 +92,8 @@ const CashClose = () => {
       </div>
 
       {/* 📊 ÓRDENES */}
-      <div className="bg-slate-800 p-4 rounded mt-6">
-        <h2 className="mb-4">📊 Órdenes</h2>
 
-        <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={ordersChart}>
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="value" fill="#22c55e" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      
 
       {/* 💰 VENTAS */}
       <div className="bg-slate-800 p-4 rounded mt-6">

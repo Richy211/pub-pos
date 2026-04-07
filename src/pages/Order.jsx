@@ -65,11 +65,16 @@ export default function Order(){
 
     if(!order) return
 
+    console.log("ORDER ACTUAL:", order)
     api.post("/order-items",{
       order_id: order.id,
       product_id: productId
     })
-    .then(()=> loadItems(order.id))
+      .then(()=> loadItems(order.id))
+      .catch(err => {
+    console.error("ERROR AL AGREGAR PRODUCTO:", err.response?.data || err.message)
+    alert("Error al agregar producto")
+  })
   }
 
   /* ===============================
@@ -118,7 +123,7 @@ const cancelOrder = () => {
      TOTAL
   ============================== */
   const total = items.reduce((acc,item)=>{
-    return acc + item.qty * item.price
+    return acc + item.quantity * item.price
   },0)
 
   /* ===============================
@@ -207,10 +212,10 @@ const cancelOrder = () => {
             {items.map(item => (
               <div key={item.id} className="flex justify-between items-center mb-2">
 
-                <span>{item.name} x{item.qty}</span>
+                <span>{item.name} x{item.quantity}</span>
 
                 <div className="flex gap-2 items-center">
-                  <span>${(item.qty * item.price).toLocaleString()}</span>
+                  <span>${(item.quantity * item.price).toLocaleString()}</span>
 
                   <button
                     onClick={() => removeItem(item.id)}

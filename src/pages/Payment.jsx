@@ -19,7 +19,7 @@ export default function Payment(){
   },[])
 
   const total = items.reduce((acc,item)=>{
-    return acc + item.qty * item.price
+    return acc + item.quantity * item.price
   },0)
 
   const payOrder = async () => {
@@ -73,8 +73,8 @@ export default function Payment(){
 
             {items.map(item => (
               <div key={item.id} className="flex justify-between text-sm mb-2">
-                <span>{item.name} x{item.qty}</span>
-                <span>${(item.qty * item.price).toLocaleString()}</span>
+                <span>{item.name} x{item.quantity}</span>
+                <span>${(item.quantity * item.price).toLocaleString()}</span>
               </div>
             ))}
 

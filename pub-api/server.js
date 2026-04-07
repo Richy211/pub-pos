@@ -254,7 +254,7 @@ router.post("/order-items", (req, res) => {
 
           if (items.length > 0) {
             db.query(
-              "UPDATE order_items SET qty = qty + 1 WHERE id = ?",
+              "UPDATE order_items SET quantity = quantity + 1 WHERE id = ?",
               [items[0].id],
               (err) => {
                 if (err) return res.status(500).json(err);
@@ -264,7 +264,7 @@ router.post("/order-items", (req, res) => {
             );
           } else {
             db.query(
-              "INSERT INTO order_items (order_id, product_id, qty) VALUES (?, ?, 1)",
+              "INSERT INTO order_items (order_id, product_id, quantity) VALUES (?, ?, 1)",
               [order_id, product_id],
               (err) => {
                 if (err) return res.status(500).json(err);
@@ -298,7 +298,7 @@ router.post("/cancel-order", (req, res) => {
 
 router.get("/order-total/:orderId", (req, res) => {
   const query = `
-    SELECT SUM(p.price * oi.qty) as total
+    SELECT SUM(p.price * oi.quantity) as total
     FROM order_items oi
     JOIN products p ON oi.product_id = p.id
     WHERE oi.order_id = ?
@@ -417,14 +417,11 @@ router.post("/purchases", verifyToken, (req, res) => {
 
 
 
-
-
-
 /* ===============================
     REPORTS & SALES
 ================================ */
-
 router.get("/cash-close", verifyToken, (req, res) => {
+
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Solo admin" });
   }
@@ -432,16 +429,27 @@ router.get("/cash-close", verifyToken, (req, res) => {
   const query = `
     SELECT 
       COUNT(*) as total_orders,
-      SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_orders,
-      SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders
-    FROM orders
+      SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END) as paid_orders,
+      SUM(CASE WHEN o.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders,
+      COALESCE(SUM(CASE WHEN o.status = 'paid' THEN oi.quantity * p.price ELSE 0 END), 0) as total_sales
+    FROM orders o
+    LEFT JOIN order_items oi ON oi.order_id = o.id
+    LEFT JOIN products p ON p.id = oi.product_id
   `;
 
   db.query(query, (err, result) => {
-    if (err) return res.status(500).json(err);
+    if (err) {
+      console.error("ERROR CASH CLOSE:", err);
+      return res.status(500).json(err);
+    }
     res.json(result[0]);
   });
 });
+
+
+
+
+
 
 router.get("/sales-by-day", verifyToken, (req, res) => {
   if (req.user.role !== "admin") {
@@ -451,7 +459,7 @@ router.get("/sales-by-day", verifyToken, (req, res) => {
   const query = `
     SELECT 
       DATE(o.created_at) as date,
-      SUM(oi.qty * p.price) as total
+      SUM(oi.quantity * p.price) as total
     FROM orders o
     JOIN order_items oi ON oi.order_id = o.id
     JOIN products p ON p.id = oi.product_id

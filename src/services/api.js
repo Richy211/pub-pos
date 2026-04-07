@@ -1,8 +1,17 @@
 import axios from "axios";
 
-// Configura la base URL de la API (cambia al puerto 5000)
 const api = axios.create({
-  baseURL: "http://localhost:5000", // Cambia el puerto si es necesario
-}); 
+  baseURL: "http://localhost:5000"
+});
+
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem("token");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
 
 export default api;
