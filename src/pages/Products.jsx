@@ -66,7 +66,6 @@ function Products() {
 
   return (
     <div className="p-6 text-black">
-
       <h1 className="text-2xl font-bold mb-4">Productos</h1>
 
       {/* 🔥 FORMULARIO */}
@@ -82,6 +81,7 @@ function Products() {
             <tr>
               <th className="px-6 py-3">Nombre</th>
               <th className="px-6 py-3">Precio</th>
+              <th className="px-6 py-3">Categoría</th>
               <th className="px-6 py-3">Acciones</th>
             </tr>
           </thead>
@@ -91,8 +91,11 @@ function Products() {
               <tr key={product.id} className="border-t">
                 <td className="px-6 py-3">{product.name}</td>
                 <td className="px-6 py-3">${product.price}</td>
-                <td className="px-6 py-3 space-x-2">
+                <td className="px-6 py-3">
+                  {product.category || "Sin categoría"}
+                </td>
 
+                <td className="px-6 py-3 space-x-2">
                   <button
                     onClick={() => handleEdit(product)}
                     className="bg-yellow-500 text-white px-3 py-1 rounded"
@@ -106,12 +109,10 @@ function Products() {
                   >
                     Eliminar
                   </button>
-
                 </td>
               </tr>
             ))}
           </tbody>
-
         </table>
       </div>
     </div>

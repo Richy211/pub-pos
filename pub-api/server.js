@@ -226,8 +226,9 @@ router.get("/order-items/:orderId", (req, res) => {
 router.post("/order-items", (req, res) => {
   const { order_id, product_id } = req.body;
 
+  // 🔥 1. TRAER PRODUCTO (precio + costo + stock)
   db.query(
-    "SELECT stock FROM products WHERE id = ?",
+    "SELECT price, cost, stock FROM products WHERE id = ?",
     [product_id],
     (err, result) => {
       if (err) return res.status(500).json(err);
@@ -236,12 +237,13 @@ router.post("/order-items", (req, res) => {
         return res.status(404).json({ message: "Producto no existe" });
       }
 
-      const stock = result[0].stock;
+      const product = result[0];
 
-      if (stock <= 0) {
+      if (product.stock <= 0) {
         return res.status(400).json({ message: "Sin stock disponible" });
       }
 
+      // 🔥 2. VER SI YA EXISTE EN LA ORDEN
       db.query(
         "SELECT * FROM order_items WHERE order_id = ? AND product_id = ?",
         [order_id, product_id],
@@ -249,9 +251,13 @@ router.post("/order-items", (req, res) => {
           if (err) return res.status(500).json(err);
 
           const updateStock = () => {
-            db.query("UPDATE products SET stock = stock - 1 WHERE id = ?", [product_id]);
+            db.query(
+              "UPDATE products SET stock = stock - 1 WHERE id = ?",
+              [product_id]
+            );
           };
 
+          // 🟡 SI YA EXISTE → SOLO SUMAR CANTIDAD
           if (items.length > 0) {
             db.query(
               "UPDATE order_items SET quantity = quantity + 1 WHERE id = ?",
@@ -262,10 +268,15 @@ router.post("/order-items", (req, res) => {
                 res.json({ message: "Cantidad actualizada" });
               }
             );
-          } else {
+          } 
+          
+          // 🟢 SI NO EXISTE → INSERTAR CON PRICE Y COST
+          else {
             db.query(
-              "INSERT INTO order_items (order_id, product_id, quantity) VALUES (?, ?, 1)",
-              [order_id, product_id],
+              `INSERT INTO order_items 
+              (order_id, product_id, quantity, price, cost) 
+              VALUES (?, ?, 1, ?, ?)`,
+              [order_id, product_id, product.price, product.cost],
               (err) => {
                 if (err) return res.status(500).json(err);
                 updateStock();
@@ -278,6 +289,9 @@ router.post("/order-items", (req, res) => {
     }
   );
 });
+
+
+
 
 router.post("/cancel-order", (req, res) => {
   const { order_id } = req.body;
@@ -387,27 +401,63 @@ router.post("/purchases", verifyToken, (req, res) => {
               return res.status(500).json({ error: errDetail.message });
             }
 
-            db.query(
-              `UPDATE products SET stock = stock + ? WHERE id = ?`,
-              [item.quantity, item.product_id],
-              (errStock) => {
-                if (errStock && !errorOcurred) {
-                  errorOcurred = true;
-                  console.error("❌ ERROR STOCK:", errStock);
-                  return res.status(500).json({ error: errStock.message });
-                }
+            // 🔥 1. TRAER PRODUCTO ACTUAL
+db.query(
+  "SELECT stock, cost FROM products WHERE id = ?",
+  [item.product_id],
+  (errProd, prodResult) => {
 
-                completed++;
+    if (errProd && !errorOcurred) {
+      errorOcurred = true;
+      return res.status(500).json({ error: errProd.message });
+    }
 
-                if (completed === products.length && !errorOcurred) {
-                  console.log("✅ COMPRA COMPLETA:", purchaseId);
-                  res.json({
-                    message: "Compra registrada correctamente",
-                    purchaseId
-                  });
-                }
-              }
-            );
+    const currentStock = prodResult[0].stock || 0;
+    const currentCost = prodResult[0].cost || 0;
+
+    const newStock = currentStock + item.quantity;
+
+    // 🧠 COSTO PROMEDIO
+    const newCost =
+      newStock === 0
+        ? item.unit_price
+        : (
+            (currentStock * currentCost) +
+            (item.quantity * item.unit_price)
+          ) / newStock;
+
+    // 🔥 2. ACTUALIZAR PRODUCTO
+    db.query(
+      `UPDATE products 
+       SET stock = ?, 
+           cost = ?, 
+           last_cost = ? 
+       WHERE id = ?`,
+      [newStock, newCost, item.unit_price, item.product_id],
+      (errStock) => {
+
+        if (errStock && !errorOcurred) {
+          errorOcurred = true;
+          return res.status(500).json({ error: errStock.message });
+        }
+
+        completed++;
+
+        if (completed === products.length && !errorOcurred) {
+          console.log("✅ COMPRA COMPLETA:", purchaseId);
+          res.json({
+            message: "Compra registrada correctamente",
+            purchaseId
+          });
+        }
+      }
+    );
+
+  }
+);
+
+
+
           }
         );
       });
@@ -427,15 +477,25 @@ router.get("/cash-close", verifyToken, (req, res) => {
   }
 
   const query = `
-    SELECT 
-      COUNT(*) as total_orders,
-      SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END) as paid_orders,
-      SUM(CASE WHEN o.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders,
-      COALESCE(SUM(CASE WHEN o.status = 'paid' THEN oi.quantity * p.price ELSE 0 END), 0) as total_sales
-    FROM orders o
-    LEFT JOIN order_items oi ON oi.order_id = o.id
-    LEFT JOIN products p ON p.id = oi.product_id
+SELECT 
+  COUNT(*) as total_orders,
+
+  SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END) as paid_orders,
+  SUM(CASE WHEN o.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders,
+
+  COALESCE(SUM(CASE WHEN o.status = 'paid' THEN oi.quantity * oi.price ELSE 0 END), 0) as total_sales,
+
+  COALESCE(SUM(CASE WHEN o.status = 'paid' THEN oi.quantity * oi.cost ELSE 0 END), 0) as total_cost,
+
+  COALESCE(SUM(CASE WHEN o.status = 'paid' THEN (oi.quantity * oi.price - oi.quantity * oi.cost) ELSE 0 END), 0) as total_profit
+
+FROM orders o
+LEFT JOIN order_items oi ON oi.order_id = o.id
+
+
   `;
+
+
 
   db.query(query, (err, result) => {
     if (err) {

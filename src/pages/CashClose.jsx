@@ -89,6 +89,19 @@ const CashClose = () => {
           <p>Total ventas: ${data.total_sales || 0}</p>
         </div>
 
+        <div className="bg-yellow-700 p-4 rounded">
+        <p>Total costos: ${data.total_cost || 0}</p>
+        </div>
+
+        <div className="bg-purple-700 p-4 rounded">
+        <p>Utilidad: ${data.total_profit || 0}</p>
+        </div>
+
+
+        <div className="bg-purple-700 p-4 rounded">
+          <p>Total ganancia: ${data.total_profit || 0}</p>
+        </div>  
+
       </div>
 
       {/* 📊 ÓRDENES */}

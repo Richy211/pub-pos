@@ -6,18 +6,21 @@ function ProductForm({ onSubmit, initialData }) {
     price: "",
   });
 
+  const [category, setCategory] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 🔥 ESTO ES LO QUE FALTABA (para editar)
+  // 🔥 CARGAR DATOS SI ES EDICIÓN
   useEffect(() => {
     if (initialData) {
       setForm({
-        name: initialData.name,
-        price: initialData.price,
+        name: initialData.name || "",
+        price: initialData.price || "",
       });
+      setCategory(initialData.category || "");
     }
   }, [initialData]);
 
+  // 🔹 MANEJO INPUTS
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -25,29 +28,15 @@ function ProductForm({ onSubmit, initialData }) {
     });
   };
 
-  const handleSubmit = async (e) => {
+  // 🔹 SUBMIT (ARREGLADO)
+  const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!form.name || !form.price) {
-      alert("Todos los campos son obligatorios");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await onSubmit(form);
-
-      // 🔥 limpiar formulario después de guardar
-      setForm({
-        name: "",
-        price: "",
-      });
-
-    } catch (error) {
-      console.error("Error en formulario", error);
-    } finally {
-      setLoading(false);
-    }
+    onSubmit({
+      name: form.name,
+      price: form.price,
+      category: category,
+    });
   };
 
   return (
@@ -59,6 +48,7 @@ function ProductForm({ onSubmit, initialData }) {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         
+        {/* NOMBRE */}
         <input
           type="text"
           name="name"
@@ -68,6 +58,7 @@ function ProductForm({ onSubmit, initialData }) {
           className="border border-gray-300 rounded-lg px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
+        {/* PRECIO */}
         <input
           type="number"
           name="price"
@@ -77,6 +68,20 @@ function ProductForm({ onSubmit, initialData }) {
           className="border border-gray-300 rounded-lg px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
+        {/* CATEGORÍA */}
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Seleccionar categoría</option>
+          <option value="Cervezas">Cervezas</option>
+          <option value="Tragos">Tragos</option>
+          <option value="Bebidas">Bebidas</option>
+          <option value="Comida">Comida</option>
+        </select>
+
+        {/* BOTÓN */}
         <button
           type="submit"
           disabled={loading}

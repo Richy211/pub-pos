@@ -11,6 +11,15 @@ export default function Order(){
   const [order,setOrder] = useState(null)
   const [items,setItems] = useState([])
 
+  const groupedProducts = products.reduce((acc, product) => {
+  const category = product.category || "Otros";
+
+  if (!acc[category]) acc[category] = [];
+  acc[category].push(product);
+
+  return acc;
+}, {});
+
   /* ===============================
      CARGA INICIAL
   ============================== */
@@ -180,25 +189,52 @@ const cancelOrder = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {products.map(product => (
-              <div
-                key={product.id}
-                onClick={() => addProduct(product.id)}
-                className="bg-gray-800 hover:bg-green-600 active:scale-95 transition-all p-4 rounded-xl cursor-pointer shadow-md"
-              >
-                <div className="text-lg font-semibold">
-                  {product.name}
-                </div>
 
-                <div className="text-sm text-gray-400">
-                  ${product.price}
-                </div>
+          <div className="space-y-6">
+
+  {["Cervezas","Tragos","Bebidas","Comida"].map(category => {
+
+    if (!groupedProducts[category]) return null;
+
+    return (
+      <div key={category}>
+
+        <h2 className="text-xl font-bold mt-4 mb-2 text-green-400">
+          {category}
+        </h2>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+
+          {groupedProducts[category].map(product => (
+
+            <div
+              key={product.id}
+              onClick={() => addProduct(product.id)}
+              className="bg-gray-800 hover:bg-green-600 active:scale-95 transition-all p-4 rounded-xl cursor-pointer shadow-md"
+            >
+              <div className="text-lg font-semibold">
+                {product.name}
               </div>
-            ))}
-          </div>
+
+              <div className="text-sm text-gray-400">
+                ${product.price}
+              </div>
+            </div>
+
+          ))}
 
         </div>
+
+      </div>
+    );
+  })}
+
+</div>
+
+
+
+        </div>
+        
 
         {/* DETALLE */}
         <div className="w-1/3 bg-gray-800 p-6 border-l border-gray-700 flex flex-col">
