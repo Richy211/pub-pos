@@ -91,28 +91,46 @@ router.post("/register", async (req, res) => {
 ================================ */
 
 router.get("/products", (req, res) => {
-  db.query("SELECT * FROM products", (err, result) => {
+  // Hacemos un JOIN para traer el nombre de la categoría
+  const query = `
+    SELECT p.*, c.name AS category 
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+  `;
+  db.query(query, (err, result) => {
     if (err) return res.status(500).json(err);
+    // Esto te mostrará en la terminal de VS Code qué nombre de categoría trae cada uno
+    console.log("Primer producto enviado:", result[0]);
     res.json(result);
   });
 });
 
 router.post("/products", (req, res) => {
-  const { name, price } = req.body;
+  const { name, price, category_id } = req.body;
 
+  // 1. Declaramos la variable que faltaba para que Node no lance el ReferenceError
+  // Si no llega category_id, le ponemos null para que la DB lo acepte
+  const finalCategory = category_id || null;
+
+  // 2. Ahora sí la usamos en el query (3 columnas, 3 signos, 3 valores)
   db.query(
-    "INSERT INTO products (name, price) VALUES (?, ?)",
-    [name, price],
+    "INSERT INTO products (name, price, category_id) VALUES (?, ?, ?)",
+    [name, price, finalCategory],
     (err, result) => {
-      if (err) return res.status(500).json(err);
+      if (err) {
+        console.error("❌ Error SQL al crear producto:", err);
+        return res.status(500).json({ error: err.message });
+      }
 
       res.status(201).json({
-        message: "Producto creado",
+        message: "Producto creado con éxito",
         id: result.insertId
       });
     }
   );
 });
+
+
 
 router.put("/products/:id", (req, res) => {
   const { name, price } = req.body;
@@ -507,10 +525,6 @@ LEFT JOIN order_items oi ON oi.order_id = o.id
 });
 
 
-
-
-
-
 router.get("/sales-by-day", verifyToken, (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Solo admin" });
@@ -540,6 +554,86 @@ router.get("/suppliers", (req, res) => {
     res.json(result);
   });
 });
+
+router.delete("/order-items/:id", (req, res) => {
+  const { id } = req.params;
+
+  // 1. Obtener item
+  db.query(
+    "SELECT product_id, quantity FROM order_items WHERE id = ?",
+    [id],
+    (err, result) => {
+      if (err) return res.status(500).json(err);
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: "Item no encontrado" });
+      }
+
+      const { product_id, quantity } = result[0];
+
+      // 2. Devolver stock
+      db.query(
+        "UPDATE products SET stock = stock + ? WHERE id = ?",
+        [quantity, product_id],
+        (err) => {
+          if (err) return res.status(500).json(err);
+
+          // 3. Eliminar item
+          db.query(
+            "DELETE FROM order_items WHERE id = ?",
+            [id],
+            (err) => {
+              if (err) return res.status(500).json(err);
+
+              res.json({ message: "Item eliminado correctamente" });
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
+router.get("/reportes/ventas-totales", (req, res) => {
+  // Consulta de Totales
+  const statsQuery = `
+    SELECT 
+      CAST(IFNULL(SUM(total), 0) AS DECIMAL(10,2)) as totalVentas,
+      CAST(IFNULL(SUM(total * 0.7), 0) AS DECIMAL(10,2)) as utilidad, 
+      COUNT(*) as ordenesPagadas
+    FROM orders 
+    WHERE status = 'paid'
+  `;
+
+  // Consulta de Gráfico usando PAID_AT
+  // Usamos COALESCE por si acaso paid_at es nulo, use created_at como respaldo
+  const graphQuery = `
+    SELECT 
+      DATE(COALESCE(paid_at, created_at)) as fecha, 
+      SUM(total) as total
+    FROM orders
+    WHERE status = 'paid'
+    GROUP BY fecha
+    ORDER BY fecha ASC
+    LIMIT 7
+  `;
+
+  db.query(statsQuery, (err, statsResult) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    db.query(graphQuery, (err, graphResult) => {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      res.json({
+        totalVentas: statsResult[0].totalVentas,
+        utilidad: statsResult[0].utilidad,
+        ordenesPagadas: statsResult[0].ordenesPagadas,
+        dataGrafico: graphResult
+      });
+    });
+  });
+});
+
 
 /* ===============================
     SERVER CONFIG

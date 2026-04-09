@@ -56,7 +56,7 @@ const Sidebar = () => {
     {
       title: "Reportes",
       items: [
-        { name: "Ventas", path: "/reports", icon: <BarChart3 size={20} /> },
+        { name: "Ventas", path: "/ventas", icon: <BarChart3 size={20} /> },
       ],
     },
     {
