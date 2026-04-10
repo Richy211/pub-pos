@@ -356,133 +356,29 @@ router.post("/close-order", (req, res) => {
 });
 
 /* ===============================
-    PURCHASES (Corregido y Seguro)
+    Obtener el balance de ganancias (Ventas vs Compras)
 ================================ */
-router.post("/purchases", verifyToken, (req, res) => {
-  console.log("🔥 BODY:", req.body);
+// Obtener el balance de ganancias (Ventas vs Compras)
+router.get("/admin/balance-ganancias", (req, res) => {
+  const sql = `
+    SELECT 
+      (SELECT IFNULL(SUM(total), 0) FROM orders WHERE status = 'paid') as total_ventas,
+      (SELECT IFNULL(SUM(total), 0) FROM compras WHERE status = 'recibido') as total_costos
+  `;
 
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Solo admin puede registrar compras" });
-  }
-
-  const { supplier_id, products } = req.body;
-
-  if (!supplier_id || !products || products.length === 0) {
-    return res.status(400).json({ error: "Datos incompletos" });
-  }
-
-  for (let item of products) {
-    if (!item.product_id || !item.quantity || !item.unit_price) {
-      return res.status(400).json({ error: "Producto incompleto" });
-    }
-
-    if (isNaN(item.product_id) || isNaN(item.quantity) || isNaN(item.unit_price)) {
-      return res.status(400).json({ error: "Valores inválidos" });
-    }
-  }
-
-  let totalNet = 0;
-  products.forEach(item => {
-    totalNet += item.quantity * item.unit_price;
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const { total_ventas, total_costos } = result[0];
+    const margen_bruto = total_ventas - total_costos;
+    
+    res.json({
+      ventas: total_ventas,
+      costos: total_costos,
+      ganancia_neta: margen_bruto
+    });
   });
-
-  const iva = totalNet * 0.19;
-  const total = totalNet + iva;
-
-  db.query(
-    `INSERT INTO purchases (supplier_id, date, total_net, iva, total, status) 
-     VALUES (?, NOW(), ?, ?, ?, 'recibido')`,
-    [supplier_id, totalNet, iva, total],
-    (err, result) => {
-      if (err) {
-        console.error("❌ ERROR PURCHASE:", err);
-        return res.status(500).json({ error: err.message });
-      }
-
-      const purchaseId = result.insertId;
-
-      let completed = 0;
-      let errorOcurred = false;
-
-      products.forEach(item => {
-        const subtotal = item.quantity * item.unit_price;
-
-        db.query(
-          `INSERT INTO purchase_details 
-          (purchase_id, product_id, quantity, unit_price_net, subtotal_net) 
-          VALUES (?, ?, ?, ?, ?)`,
-          [purchaseId, item.product_id, item.quantity, item.unit_price, subtotal],
-          (errDetail) => {
-            if (errDetail && !errorOcurred) {
-              errorOcurred = true;
-              console.error("❌ ERROR DETALLE:", errDetail);
-              return res.status(500).json({ error: errDetail.message });
-            }
-
-            // 🔥 1. TRAER PRODUCTO ACTUAL
-db.query(
-  "SELECT stock, cost FROM products WHERE id = ?",
-  [item.product_id],
-  (errProd, prodResult) => {
-
-    if (errProd && !errorOcurred) {
-      errorOcurred = true;
-      return res.status(500).json({ error: errProd.message });
-    }
-
-    const currentStock = prodResult[0].stock || 0;
-    const currentCost = prodResult[0].cost || 0;
-
-    const newStock = currentStock + item.quantity;
-
-    // 🧠 COSTO PROMEDIO
-    const newCost =
-      newStock === 0
-        ? item.unit_price
-        : (
-            (currentStock * currentCost) +
-            (item.quantity * item.unit_price)
-          ) / newStock;
-
-    // 🔥 2. ACTUALIZAR PRODUCTO
-    db.query(
-      `UPDATE products 
-       SET stock = ?, 
-           cost = ?, 
-           last_cost = ? 
-       WHERE id = ?`,
-      [newStock, newCost, item.unit_price, item.product_id],
-      (errStock) => {
-
-        if (errStock && !errorOcurred) {
-          errorOcurred = true;
-          return res.status(500).json({ error: errStock.message });
-        }
-
-        completed++;
-
-        if (completed === products.length && !errorOcurred) {
-          console.log("✅ COMPRA COMPLETA:", purchaseId);
-          res.json({
-            message: "Compra registrada correctamente",
-            purchaseId
-          });
-        }
-      }
-    );
-
-  }
-);
-
-
-
-          }
-        );
-      });
-    }
-  );
 });
-
 
 
 /* ===============================
