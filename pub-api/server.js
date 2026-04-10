@@ -381,6 +381,21 @@ router.get("/admin/balance-ganancias", (req, res) => {
 });
 
 
+// Obtener lista de compras con nombre del proveedor
+router.get("/admin/compras", (req, res) => {
+  const sql = `
+    SELECT c.*, p.nombre as proveedor_nombre 
+    FROM compras c 
+    LEFT JOIN proveedores p ON c.supplier_id = p.id 
+    ORDER BY c.date DESC
+  `;
+  
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
 /* ===============================
     REPORTS & SALES
 ================================ */
