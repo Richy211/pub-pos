@@ -1,131 +1,56 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import  api from "../services/api"
+import api from "../services/api"
 
-export default function Payment(){
+export default function Payment() {
+  const { id } = useParams(); // id de la orden
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
 
-  const { orderId } = useParams()
-  const navigate = useNavigate()
+  useEffect(() => {
+    api.get(`/order-items/${id}`)
+      .then(res => setItems(res.data))
+      .catch(err => console.error("Error cargando items de pago", err));
+  }, [id]);
 
-  const [items,setItems] = useState([])
-
-  useEffect(()=>{
-
-    api.get(`/order-items/${orderId}`)
-      .then(res=>{
-        setItems(res.data)
-      })
-
-  },[])
-
-  const total = items.reduce((acc,item)=>{
-    return acc + item.quantity * item.price
-  },0)
+  const total = items.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.price)), 0);
 
   const payOrder = async () => {
-
     try {
-
-      await api.post("/close-order", {
-        order_id:Number(orderId)
-      })
-
-      alert("✅ Pago realizado")
-
-      // 🔥 navegación limpia a mesas
-      setTimeout(() => {
-        navigate("/tables")
-      }, 800)
-
+      await api.post("/close-order", { order_id: Number(id) });
+      alert("✅ Pago realizado con éxito");
+      navigate("/tables");
     } catch (error) {
-
-      console.error(error)
-      alert("❌ Error al procesar pago")
-
+      alert("❌ Error al procesar pago");
     }
-
   }
 
   return (
-    <div>
-
-      {/* 🔥 HEADER */}
-      <div className="bg-gray-950 border-b border-gray-800 p-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-green-400">
-          🍺 Pub POS
-        </h1>
-        <div className="text-sm text-gray-400">
-          Pago
-        </div>
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="bg-gray-950 p-4 border-b border-gray-800">
+        <h1 className="text-xl font-bold text-green-400 text-center">Finalizar Pago</h1>
       </div>
-
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-
+      <div className="flex items-center justify-center p-10">
         <div className="bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md">
-
-          {/* TITULO */}
-          <h1 className="text-2xl font-bold mb-6 text-center">
-            💰 Pago
-          </h1>
-
-          {/* RESUMEN */}
-          <div className="mb-6 max-h-40 overflow-y-auto">
-
+          <div className="mb-6 space-y-2">
             {items.map(item => (
-              <div key={item.id} className="flex justify-between text-sm mb-2">
+              <div key={item.id} className="flex justify-between text-sm border-b border-gray-700 pb-1">
                 <span>{item.name} x{item.quantity}</span>
                 <span>${(item.quantity * item.price).toLocaleString()}</span>
               </div>
             ))}
-
           </div>
-
-          {/* TOTAL */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-8">
             <p className="text-gray-400">Total a pagar</p>
-            <h2 className="text-4xl font-bold text-green-400">
-              ${total.toLocaleString()}
-            </h2>
+            <h2 className="text-5xl font-bold text-green-400">${total.toLocaleString()}</h2>
           </div>
-
-          {/* BOTONES */}
-          <div className="flex flex-col gap-4">
-
-            <button
-              onClick={payOrder}
-              className="bg-green-500 hover:bg-green-600 p-4 rounded-xl text-lg font-bold"
-            >
-              💵 Efectivo
-            </button>
-
-            <button
-              onClick={payOrder}
-              className="bg-blue-500 hover:bg-blue-600 p-4 rounded-xl text-lg font-bold"
-            >
-              💳 Tarjeta
-            </button>
-
-            <button
-              onClick={payOrder}
-              className="bg-purple-500 hover:bg-purple-600 p-4 rounded-xl text-lg font-bold"
-            >
-              🔀 Mixto
-            </button>
-
+          <div className="grid grid-cols-1 gap-4">
+            <button onClick={payOrder} className="bg-green-500 hover:bg-green-600 p-4 rounded-xl font-bold text-lg">💵 Efectivo</button>
+            <button onClick={payOrder} className="bg-blue-500 hover:bg-blue-600 p-4 rounded-xl font-bold text-lg">💳 Tarjeta</button>
+            <button onClick={() => navigate(-1)} className="text-gray-400 mt-4 hover:underline">Volver a la orden</button>
           </div>
-
-          {/* VOLVER */}
-          <button
-            onClick={() => navigate(-1)}
-            className="mt-6 w-full text-gray-400 hover:text-white"
-          >
-            ← Volver
-          </button>
-
         </div>
-
       </div>
-
     </div>
   )
 }

@@ -1,173 +1,114 @@
-import { useEffect, useState } from "react";
-import { createPurchase } from "../services/purchaseService";
-import { getSuppliers, getProducts } from "../services/purchaseService";
+import { useState, useEffect } from "react";
+import api from "../services/api";
 
-const PurchaseForm = () => {
-  const [supplierId, setSupplierId] = useState("");
-  const [products, setProducts] = useState([]);
-  const [currentProduct, setCurrentProduct] = useState({
-    product_id: "",
-    quantity: "",
-    unit_price: "",
+export default function PurchaseForm({ onSave, onCancel }) {
+  const [proveedores, setProveedores] = useState([]);
+  const [formData, setFormData] = useState({
+    supplier_id: "",
+    date: new Date().toISOString().slice(0, 16), // Fecha actual para el input datetime-local
+    total_net: 0,
+    iva: 0,
+    total: 0,
+    status: "recibido"
   });
 
-  const token = localStorage.getItem("token");
+  useEffect(() => {
+    // Cargar proveedores para el select
+    api.get("/admin/proveedores").then(res => setProveedores(res.data));
+  }, []);
 
-  const addProduct = () => {
-    if (!currentProduct.product_id) return;
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    let newFormData = { ...formData, [name]: value };
 
-    setProducts([...products, currentProduct]);
-    setCurrentProduct({ product_id: "", quantity: "", unit_price: "" });
+    // Cálculo automático de IVA (19% ej. Chile) y Total si cambias el Neto
+    if (name === "total_net") {
+      const neto = parseFloat(value) || 0;
+      newFormData.iva = Math.round(neto * 0.19);
+      newFormData.total = neto + newFormData.iva;
+    }
+
+    setFormData(newFormData);
   };
 
-  const removeProduct = (index) => {
-    const updated = products.filter((_, i) => i !== index);
-    setProducts(updated);
-  };
-
-  const calculateTotal = () => {
-    return products.reduce(
-      (acc, p) => acc + p.quantity * p.unit_price,
-      0
-    );
-  };
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
-      const payload = {
-        supplier_id: supplierId,
-        products: products.map((p) => ({
-          product_id: Number(p.product_id),
-          quantity: Number(p.quantity),
-          unit_price: Number(p.unit_price),
-        })),
-      };
-
-      await createPurchase(payload, token);
-
-      alert("Compra creada correctamente");
-
-      setProducts([]);
-      setSupplierId("");
-    } catch (error) {
-      console.error(error);
-      alert("Error al crear compra");
+      await api.post("/admin/compras", formData);
+      alert("Compra registrada con éxito");
+      onSave(); // Refresca la tabla en el padre
+    } catch (err) {
+      console.error("Error al guardar compra:", err);
     }
   };
 
-  useEffect(() => {
-  const loadData = async () => {
-    const suppliersData = await getSuppliers();
-    const productsData = await getProducts();
-
-    setSuppliers(suppliersData);
-    setProductsList(productsData);
-  };
-
-  loadData();
-}, []);
-
-const [suppliers, setSuppliers] = useState([]);
-const [productsList, setProductsList] = useState([]);
-
   return (
-    <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+      <h3 className="text-xl font-bold mb-4 text-green-400">Nueva Factura de Compra</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Proveedor */}
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Proveedor</label>
+          <select 
+            name="supplier_id" 
+            value={formData.supplier_id} 
+            onChange={handleChange}
+            className="w-full bg-gray-700 p-2 rounded border border-gray-600 focus:outline-none focus:border-green-500"
+            required
+          >
+            <option value="">Selecciona un proveedor</option>
+            {proveedores.map(p => (
+              <option key={p.id} value={p.id}>{p.nombre}</option>
+            ))}
+          </select>
+        </div>
 
-      {/* Proveedor */}
-  <select
-  value={supplierId}
-  onChange={(e) => setSupplierId(e.target.value)}
-  className="border p-2 w-full"
->
-  <option value="">Selecciona proveedor</option>
-  {suppliers.map((s) => (
-    <option key={s.id} value={s.id}>
-      {s.name}
-    </option>
-  ))}
-</select>
+        {/* Fecha */}
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Fecha de Compra</label>
+          <input 
+            type="datetime-local" 
+            name="date" 
+            value={formData.date} 
+            onChange={handleChange}
+            className="w-full bg-gray-700 p-2 rounded border border-gray-600"
+          />
+        </div>
 
-      {/* Agregar producto */}
-      <div className="grid grid-cols-3 gap-2">
-       <select
-  value={currentProduct.product_id}
-  onChange={(e) =>
-    setCurrentProduct({
-      ...currentProduct,
-      product_id: e.target.value,
-    })
-  }
-  className="border p-2"
->
-  <option value="">Producto</option>
-  {productsList.map((p) => (
-    <option key={p.id} value={p.id}>
-      {p.name}
-    </option>
-  ))}
-</select>
+        {/* Montos */}
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Monto Neto</label>
+          <input 
+            type="number" 
+            name="total_net" 
+            value={formData.total_net} 
+            onChange={handleChange}
+            className="w-full bg-gray-700 p-2 rounded border border-gray-600"
+            placeholder="0.00"
+          />
+        </div>
 
-
-        <input
-          type="number"
-          placeholder="Cantidad"
-          value={currentProduct.quantity}
-          onChange={(e) =>
-            setCurrentProduct({ ...currentProduct, quantity: e.target.value })
-          }
-          className="border p-2 bg-white text-black w-full"
-        />
-        <input
-          type="number"
-          placeholder="Precio"
-          value={currentProduct.unit_price}
-          onChange={(e) =>
-            setCurrentProduct({ ...currentProduct, unit_price: e.target.value })
-          }
-          className="border p-2 bg-white text-black w-full"
-        />
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Total (con IVA)</label>
+          <input 
+            type="number" 
+            name="total" 
+            value={formData.total} 
+            readOnly 
+            className="w-full bg-gray-600 p-2 rounded border border-gray-600 cursor-not-allowed"
+          />
+        </div>
       </div>
 
-      <button
-        onClick={addProduct}
-        className="bg-blue-500 text-white px-4 py-2"
-      >
-        Agregar producto
-      </button>
-
-      {/* Lista */}
-      <div>
-        <h2 className="font-bold">Productos agregados</h2>
-
-        {products.map((p, index) => (
-          <div key={index} className="flex justify-between border p-2 mt-2">
-            <span>
-              ID: {p.product_id} | Cant: {p.quantity} | Precio: {p.unit_price}
-            </span>
-            <button
-              onClick={() => removeProduct(index)}
-              className="text-red-500"
-            >
-              X
-            </button>
-          </div>
-        ))}
+      <div className="mt-6 flex gap-2">
+        <button type="submit" className="bg-green-600 px-6 py-2 rounded-lg font-bold hover:bg-green-700 transition">
+          Guardar Compra
+        </button>
+        <button type="button" onClick={onCancel} className="bg-gray-600 px-6 py-2 rounded-lg font-bold hover:bg-gray-700">
+          Cancelar
+        </button>
       </div>
-
-      {/* Total */}
-      <div className="font-bold">
-        Total Neto: ${calculateTotal()}
-      </div>
-
-      {/* Submit */}
-      <button
-        onClick={handleSubmit}
-        className="bg-green-600 text-white px-4 py-2"
-      >
-        Crear compra
-      </button>
-    </div>
+    </form>
   );
-};
-
-export default PurchaseForm;
+}

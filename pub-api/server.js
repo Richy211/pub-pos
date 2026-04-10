@@ -227,16 +227,16 @@ router.get("/orders/table/:tableId", (req, res) => {
   );
 });
 
+// 1. Obtener los productos de una orden (para que NO salga vacío)
 router.get("/order-items/:orderId", (req, res) => {
   const query = `
-    SELECT oi.*, p.name, p.price
+    SELECT oi.id, oi.quantity, p.name, p.price, (oi.quantity * p.price) as subtotal
     FROM order_items oi
     JOIN products p ON oi.product_id = p.id
     WHERE oi.order_id = ?
   `;
-
   db.query(query, [req.params.orderId], (err, result) => {
-    if (err) return res.status(500).json(err);
+    if (err) return res.status(500).json({ error: err.message });
     res.json(result);
   });
 });
@@ -328,19 +328,20 @@ router.post("/cancel-order", (req, res) => {
   });
 });
 
+// 2. Obtener el TOTAL real (para que NO salga $0)
 router.get("/order-total/:orderId", (req, res) => {
   const query = `
-    SELECT SUM(p.price * oi.quantity) as total
+    SELECT IFNULL(SUM(oi.quantity * p.price), 0) as total
     FROM order_items oi
     JOIN products p ON oi.product_id = p.id
     WHERE oi.order_id = ?
   `;
-
   db.query(query, [req.params.orderId], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json(result[0]);
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ total: result[0].total });
   });
 });
+
 
 router.post("/close-order", (req, res) => {
   const { order_id } = req.body;
@@ -545,6 +546,42 @@ router.get("/reportes/ventas-totales", (req, res) => {
   });
 });
 
+// Listar proveedores para el Select
+router.get("/admin/proveedores", (req, res) => {
+  db.query("SELECT id, nombre FROM proveedores ORDER BY nombre ASC", (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.json(result);
+  });
+});
+
+// Guardar nueva compra
+router.post("/admin/compras", (req, res) => {
+  const { supplier_id, date, total_net, iva, total, status } = req.body;
+  const sql = `
+    INSERT INTO compras (supplier_id, date, total_net, iva, total, status) 
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+  
+  db.query(sql, [supplier_id, date, total_net, iva, total, status], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "Compra registrada", id: result.insertId });
+  });
+});
+
+// Agrega esto antes de app.use("/", router);
+router.get("/payment-detail/:tableId", (req, res) => {
+  const query = `
+    SELECT oi.quantity, p.name, p.price
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.table_id = ? AND o.status = 'open'
+  `;
+  db.query(query, [req.params.tableId], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result);
+  });
+});
 
 /* ===============================
     SERVER CONFIG

@@ -43,7 +43,9 @@ const Sidebar = () => {
     }
   }, [dark]);
 
-  // 📌 SECCIONES
+ // ... resto del código igual arriba
+
+  // 📌 SECCIONES ACTUALIZADAS
   const sections = [
     {
       title: "Ventas",
@@ -64,12 +66,17 @@ const Sidebar = () => {
       items: [
         { name: "Productos", path: "/products", icon: <ClipboardList size={20} /> },
         { name: "Usuarios", path: "/users", icon: <LayoutGrid size={20} /> },
-        { name: "Compras", path: "/purchases", icon: <CreditCard size={20} /> },
+        // 🔄 CAMBIO AQUÍ: Ahora apunta a la nueva ruta y nombre
+        { name: "Adm. Compras", path: "/admin-ventas", icon: <CreditCard size={20} /> }, 
         { name: "IVA", path: "/tax", icon: <BarChart3 size={20} /> },
         { name: "Configuración", path: "/settings", icon: <Settings size={20} /> },
       ],
     },
   ];
+
+// ... resto del código igual abajo
+
+
 
   // 🔐 FILTRO POR ROL
   const filteredSections = sections.map((section) => {

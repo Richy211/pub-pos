@@ -1,20 +1,13 @@
 import { useEffect, useState } from "react";
 import ProductForm from "../components/ProductForm";
-import {
-  deleteProduct,
-  getProducts,
-  createProduct,
-  updateProduct,
-} from "../services/products";
+import { deleteProduct, getProducts, createProduct, updateProduct } from "../services/products";
 
 function Products() {
   const [products, setProducts] = useState([]);
   const [editingProduct, setEditingProduct] = useState(null);
-
   const [currentPage, setCurrentPage] = useState(1);
-const [itemsPerPage] = useState(10); // Número de productos por página
+  const itemsPerPage = 10;
 
-  // 🔹 Cargar productos
   const loadProducts = async () => {
     try {
       const res = await getProducts();
@@ -24,162 +17,67 @@ const [itemsPerPage] = useState(10); // Número de productos por página
     }
   };
 
-  useEffect(() => {
-    loadProducts();
-  }, []);
+  useEffect(() => { loadProducts(); }, []);
 
-  // 🔹 Crear
   const handleCreate = async (data) => {
-    try {
-      await createProduct(data);
-      loadProducts();
-    } catch (error) {
-      console.error("Error creando producto", error);
-    }
+    await createProduct(data);
+    loadProducts();
   };
 
-  // 🔹 Editar
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-  };
-
-  // 🔹 Actualizar
   const handleUpdate = async (data) => {
-    try {
-      await updateProduct(editingProduct.id, data);
-      setEditingProduct(null);
-      loadProducts();
-    } catch (error) {
-      console.error("Error actualizando", error);
-    }
+    await updateProduct(editingProduct.id, data);
+    setEditingProduct(null);
+    loadProducts();
   };
 
-  // 🔹 Eliminar
   const handleDelete = async (id) => {
-    const confirmDelete = confirm("¿Eliminar producto?");
-    if (!confirmDelete) return;
-
-    try {
+    if (confirm("¿Eliminar producto?")) {
       await deleteProduct(id);
       loadProducts();
-    } catch (error) {
-      console.error("Error eliminando producto", error);
     }
   };
 
-// Índices para el rebanado
-const indexOfLastItem = currentPage * itemsPerPage;
-const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-
-// Estos son los productos que vas a mapear en la tabla
-const currentItems = products.slice(indexOfFirstItem, indexOfLastItem);
-
-// Total de páginas
-const totalPages = Math.ceil(products.length / itemsPerPage);
-
-// Función para cambiar de página
-const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const currentItems = products.slice(indexOfLastItem - itemsPerPage, indexOfLastItem);
+  const totalPages = Math.ceil(products.length / itemsPerPage);
 
   return (
-    <div className="p-6 text-black">
-      <h1 className="text-2xl font-bold mb-4">Productos</h1>
-
-      {/* 🔥 FORMULARIO */}
-      <ProductForm
-        onSubmit={editingProduct ? handleUpdate : handleCreate}
-        initialData={editingProduct}
-      />
-
-      {/* 🔥 TABLA */}
-      <div className="bg-white shadow-md rounded-xl overflow-hidden mt-4">
+    <div className="p-6 text-white bg-gray-900 min-h-screen">
+      <h1 className="text-3xl font-bold mb-6 text-green-400">Gestión de Productos</h1>
+      <div className="bg-gray-800 p-6 rounded-xl mb-8">
+        <ProductForm onSubmit={editingProduct ? handleUpdate : handleCreate} initialData={editingProduct} />
+      </div>
+      <div className="bg-gray-800 rounded-xl overflow-hidden shadow-2xl">
         <table className="w-full text-left">
-          <thead className="bg-gray-100 text-gray-600 uppercase text-sm">
+          <thead className="bg-gray-700 text-green-400">
             <tr>
-              <th className="px-6 py-3">Nombre</th>
-              <th className="px-6 py-3">Precio</th>
-              <th className="px-6 py-3">Categoría</th>
-              <th className="px-6 py-3">Acciones</th>
+              <th className="px-6 py-4">Nombre</th>
+              <th className="px-6 py-4">Precio</th>
+              <th className="px-6 py-4">Categoría</th>
+              <th className="px-6 py-4">Acciones</th>
             </tr>
           </thead>
-
-          <tbody>
-            {currentItems.map((product) => (
-              <tr key={product.id} className="border-t">
-                <td className="px-6 py-3">{product.name}</td>
-                <td className="px-6 py-3">${product.price}</td>
-                <td className="px-6 py-3">
-                  {product.category || "Sin categoría"}
+          <tbody className="divide-y divide-gray-700">
+            {currentItems.map((p) => (
+              <tr key={p.id} className="hover:bg-gray-750 transition-colors">
+                <td className="px-6 py-4">{p.name}</td>
+                <td className="px-6 py-4 font-bold text-green-400">${p.price}</td>
+                <td className="px-6 py-4">{p.category || "General"}</td>
+                <td className="px-6 py-4 space-x-3">
+                  <button onClick={() => setEditingProduct(p)} className="text-yellow-500 hover:text-yellow-400">Editar</button>
+                  <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-400">Eliminar</button>
                 </td>
-
-                <td className="px-6 py-3 space-x-2">
-                  <button
-                    onClick={() => handleEdit(product)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded"
-                  >
-                    Editar
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(product.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded"
-                  >
-                    Eliminar
-                  </button>
-                </td>
-
-                
               </tr>
-              
-              
             ))}
           </tbody>
         </table>
-
-        <div className="flex justify-between items-center mt-6 bg-gray-100 p-4 rounded-xl border border-gray-200 shadow-inner">
-  {/* Texto con mejor contraste (gris oscuro casi negro) */}
-  <div className="text-sm font-medium text-gray-700">
-    Mostrando <span className="text-blue-600">{indexOfFirstItem + 1}</span> a <span className="text-blue-600">{Math.min(indexOfLastItem, products.length)}</span> de {products.length} productos
-  </div>
-  
-  <div className="flex gap-2">
-    {/* Botón Anterior */}
-    <button
-      onClick={() => paginate(currentPage - 1)}
-      disabled={currentPage === 1}
-      className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
-    >
-      Anterior
-    </button>
-
-    {/* Números de página */}
-    {[...Array(totalPages)].map((_, i) => (
-      <button
-        key={i + 1}
-        onClick={() => paginate(i + 1)}
-        className={`px-4 py-2 rounded-lg font-bold transition-all shadow-sm ${
-          currentPage === i + 1 
-            ? 'bg-blue-600 text-white border border-blue-600' 
-            : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-500'
-        }`}
-      >
-        {i + 1}
-      </button>
-    ))}
-
-    {/* Botón Siguiente */}
-    <button
-      onClick={() => paginate(currentPage + 1)}
-      disabled={currentPage === totalPages}
-      className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
-    >
-      Siguiente
-    </button>
-  </div>
-</div>
+        <div className="p-4 flex justify-center gap-2 bg-gray-900">
+          {[...Array(totalPages)].map((_, i) => (
+            <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-4 py-2 rounded ${currentPage === i+1 ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300'}`}>{i + 1}</button>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
-
 export default Products;
