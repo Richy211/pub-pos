@@ -1,8 +1,9 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000"; // ajusta si usas otra
+const API_URL = "http://localhost:5000";
 
 export const createPurchase = (data, token) => {
+  // Cambiamos a /purchases para que coincida con el backend
   return axios.post(`${API_URL}/purchases`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -11,11 +12,7 @@ export const createPurchase = (data, token) => {
 };
 
 export const getSuppliers = async () => {
-  const res = await fetch("http://localhost:5000/suppliers");
-  return res.json();
-};
-
-export const getProducts = async () => {
-  const res = await fetch("http://localhost:5000/products");
+  // Usamos la ruta corregida
+  const res = await fetch(`${API_URL}/suppliers`);
   return res.json();
 };

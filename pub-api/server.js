@@ -382,15 +382,14 @@ router.get("/admin/balance-ganancias", (req, res) => {
 });
 
 
-// Obtener lista de compras con nombre del proveedor
+// Obtener historial de compras
 router.get("/admin/compras", (req, res) => {
   const sql = `
     SELECT c.*, p.nombre as proveedor_nombre 
     FROM compras c 
-    LEFT JOIN proveedores p ON c.supplier_id = p.id 
+    LEFT JOIN proveedores p ON c.proveedor_id = p.id 
     ORDER BY c.date DESC
   `;
-  
   db.query(sql, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
@@ -460,12 +459,33 @@ router.get("/sales-by-day", verifyToken, (req, res) => {
   });
 });
 
+// Listar proveedores (Asegúrate de que la tabla sea 'proveedores')
 router.get("/suppliers", (req, res) => {
-  db.query("SELECT * FROM suppliers", (err, result) => {
+  db.query("SELECT id, nombre FROM proveedores ORDER BY nombre ASC", (err, result) => {
     if (err) return res.status(500).json(err);
     res.json(result);
   });
 });
+
+// Guardar nueva compra (Nombres exactos de tu diagrama)
+router.post("/purchases", (req, res) => {
+  const { proveedor_id, date, total_neto, iva, total, status } = req.body;
+  
+  const sql = `
+    INSERT INTO compras (proveedor_id, date, total_neto, iva, total, status) 
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+  
+  db.query(sql, [proveedor_id, date, total_neto, iva, total, status || 'completado'], (err, result) => {
+    if (err) {
+      console.error("Error SQL:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: "Compra registrada", id: result.insertId });
+  });
+});
+
+
 
 router.delete("/order-items/:id", (req, res) => {
   const { id } = req.params;

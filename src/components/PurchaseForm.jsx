@@ -4,25 +4,27 @@ import api from "../services/api";
 export default function PurchaseForm({ onSave, onCancel }) {
   const [proveedores, setProveedores] = useState([]);
   const [formData, setFormData] = useState({
-    supplier_id: "",
-    date: new Date().toISOString().slice(0, 16), // Fecha actual para el input datetime-local
-    total_net: 0,
+    proveedor_id: "", // Corregido según tu DB
+    date: new Date().toISOString().slice(0, 16),
+    total_neto: 0,    // Corregido según tu DB
     iva: 0,
     total: 0,
-    status: "recibido"
+    status: "completado" // Usamos 'completado' que es el estándar de tu sistema
   });
 
   useEffect(() => {
-    // Cargar proveedores para el select
-    api.get("/admin/proveedores").then(res => setProveedores(res.data));
+    // Cargar proveedores (Asegúrate de que la ruta sea esta)
+    api.get("/admin/proveedores")
+      .then(res => setProveedores(res.data))
+      .catch(err => console.error("Error cargando proveedores:", err));
   }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     let newFormData = { ...formData, [name]: value };
 
-    // Cálculo automático de IVA (19% ej. Chile) y Total si cambias el Neto
-    if (name === "total_net") {
+    // Cálculo automático de IVA
+    if (name === "total_neto") {
       const neto = parseFloat(value) || 0;
       newFormData.iva = Math.round(neto * 0.19);
       newFormData.total = neto + newFormData.iva;
@@ -34,11 +36,13 @@ export default function PurchaseForm({ onSave, onCancel }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Enviamos a la ruta que ya tienes en server.js
       await api.post("/admin/compras", formData);
       alert("Compra registrada con éxito");
-      onSave(); // Refresca la tabla en el padre
+      onSave(); // Refresca la tabla
     } catch (err) {
       console.error("Error al guardar compra:", err);
+      alert("Error al guardar la compra. Revisa la consola.");
     }
   };
 
@@ -51,10 +55,10 @@ export default function PurchaseForm({ onSave, onCancel }) {
         <div>
           <label className="block text-sm text-gray-400 mb-1">Proveedor</label>
           <select 
-            name="supplier_id" 
-            value={formData.supplier_id} 
+            name="proveedor_id" 
+            value={formData.proveedor_id} 
             onChange={handleChange}
-            className="w-full bg-gray-700 p-2 rounded border border-gray-600 focus:outline-none focus:border-green-500"
+            className="w-full bg-gray-700 p-2 rounded border border-gray-600 focus:outline-none focus:border-green-500 text-white"
             required
           >
             <option value="">Selecciona un proveedor</option>
@@ -72,23 +76,24 @@ export default function PurchaseForm({ onSave, onCancel }) {
             name="date" 
             value={formData.date} 
             onChange={handleChange}
-            className="w-full bg-gray-700 p-2 rounded border border-gray-600"
+            className="w-full bg-gray-700 p-2 rounded border border-gray-600 text-white"
           />
         </div>
 
-        {/* Montos */}
+        {/* Monto Neto */}
         <div>
           <label className="block text-sm text-gray-400 mb-1">Monto Neto</label>
           <input 
             type="number" 
-            name="total_net" 
-            value={formData.total_net} 
+            name="total_neto" 
+            value={formData.total_neto} 
             onChange={handleChange}
-            className="w-full bg-gray-700 p-2 rounded border border-gray-600"
-            placeholder="0.00"
+            className="w-full bg-gray-700 p-2 rounded border border-gray-600 text-white"
+            placeholder="0"
           />
         </div>
 
+        {/* Total con IVA */}
         <div>
           <label className="block text-sm text-gray-400 mb-1">Total (con IVA)</label>
           <input 
@@ -96,16 +101,16 @@ export default function PurchaseForm({ onSave, onCancel }) {
             name="total" 
             value={formData.total} 
             readOnly 
-            className="w-full bg-gray-600 p-2 rounded border border-gray-600 cursor-not-allowed"
+            className="w-full bg-gray-600 p-2 rounded border border-gray-600 cursor-not-allowed text-gray-300"
           />
         </div>
       </div>
 
       <div className="mt-6 flex gap-2">
-        <button type="submit" className="bg-green-600 px-6 py-2 rounded-lg font-bold hover:bg-green-700 transition">
+        <button type="submit" className="bg-green-600 px-6 py-2 rounded-lg font-bold hover:bg-green-700 transition text-white">
           Guardar Compra
         </button>
-        <button type="button" onClick={onCancel} className="bg-gray-600 px-6 py-2 rounded-lg font-bold hover:bg-gray-700">
+        <button type="button" onClick={onCancel} className="bg-gray-600 px-6 py-2 rounded-lg font-bold hover:bg-gray-700 text-white">
           Cancelar
         </button>
       </div>
