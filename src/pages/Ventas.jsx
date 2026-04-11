@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 export default function Ventas() {
   const [stats, setStats] = useState({
@@ -10,7 +10,7 @@ export default function Ventas() {
     dataGrafico: []
   });
 
-  useEffect(() => {
+  const loadData = () => {
     api.get("/reportes/ventas-totales")
       .then(res => {
         setStats({
@@ -21,71 +21,63 @@ export default function Ventas() {
         });
       })
       .catch(err => console.error("Error al cargar ventas:", err));
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   return (
     <div className="p-6 bg-gray-900 min-h-screen text-white">
-      <h1 className="text-3xl font-bold mb-6">📊 Reporte de Ventas</h1>
+      <h1 className="text-3xl font-bold mb-6 text-green-400 font-mono">📊 REPORTE DE VENTAS</h1>
 
       {/* TARJETAS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-blue-600 p-6 rounded-xl shadow-lg">
-          <p className="text-blue-100 text-sm uppercase font-bold">Total Ventas</p>
-          <h2 className="text-3xl font-bold">${Number(stats.totalVentas).toLocaleString()}</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-blue-600 p-6 rounded-xl border border-blue-400">
+          <p className="text-xs uppercase font-black">Ventas Totales</p>
+          <h2 className="text-4xl font-black">${Number(stats.totalVentas).toLocaleString('es-CL')}</h2>
         </div>
-        <div className="bg-purple-600 p-6 rounded-xl shadow-lg">
-          <p className="text-purple-100 text-sm uppercase font-bold">Utilidad Neta</p>
-          <h2 className="text-3xl font-bold">${Number(stats.utilidad).toLocaleString()}</h2>
+        <div className="bg-purple-600 p-6 rounded-xl border border-purple-400">
+          <p className="text-xs uppercase font-black">Utilidad</p>
+          <h2 className="text-4xl font-black">${Number(stats.utilidad).toLocaleString('es-CL')}</h2>
         </div>
-        <div className="bg-green-600 p-6 rounded-xl shadow-lg">
-          <p className="text-green-100 text-sm uppercase font-bold">Órdenes Finalizadas</p>
-          <h2 className="text-3xl font-bold">{stats.ordenesPagadas}</h2>
+        <div className="bg-green-600 p-6 rounded-xl border border-green-400">
+          <p className="text-xs uppercase font-black">Órdenes</p>
+          <h2 className="text-4xl font-black">{stats.ordenesPagadas}</h2>
         </div>
       </div>
 
-<div className="bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
-  <h3 className="text-xl font-bold mb-4">Ventas por Día</h3>
-  
-  {/* USAMOS aspect={2} para que el gráfico siempre mantenga una forma proporcional
-      independiente de la pantalla, o fijamos el height en el ResponsiveContainer
-  */}
-  <div className="w-full" style={{ minHeight: '350px' }}> 
-    <ResponsiveContainer width="100%" height={350}>
-      <BarChart 
-        data={stats.dataGrafico}
-        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+      {/* GRÁFICO CON TAMAÑO FIJO (PARA MATAR EL BUG) */}
+      <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 overflow-x-auto">
+        <h3 className="text-xl font-bold mb-6">Ventas Diarias</h3>
+        
+<BarChart 
+  width={800} 
+  height={400} 
+  data={stats.dataGrafico}
+  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+>
+  <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+  <XAxis dataKey="fecha" stroke="#9CA3AF" />
+  <YAxis stroke="#9CA3AF" />
+  <Tooltip 
+    contentStyle={{ backgroundColor: '#1F2937', border: 'none' }}
+    // Aseguramos que busque la propiedad 'total' que viene del backend
+    formatter={(value) => [`$${Number(value).toLocaleString('es-CL')}`, "Venta"]}
+  />
+  <Bar dataKey="total" fill="#3B82F6" />
+</BarChart>
+
+
+
+      </div>
+      
+      <button 
+        onClick={loadData}
+        className="mt-6 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-bold"
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-        <XAxis 
-          dataKey="fecha" 
-          stroke="#9CA3AF" 
-          tickFormatter={(val) => val ? val.substring(5, 10) : ''} 
-        />
-        <YAxis stroke="#9CA3AF" />
-        <Tooltip 
-  labelFormatter={(value) => {
-    if (!value) return "";
-    return new Date(value).toLocaleDateString('es-ES'); // Esto lo deja como 08/04/2026
-  }}
-  formatter={(value) => [`$${Number(value).toLocaleString()}`, "Ventas"]}
-/>
-        <Bar 
-        dataKey="total" 
-        fill="#3B82F6" 
-        radius={[4, 4, 0, 0]}
-        isAnimationActive={false} 
-/>
-  
-      </BarChart>
-    </ResponsiveContainer>
-  </div>
-</div>
-
-
-
-
-
-
+        REFRESCAR DATOS
+      </button>
     </div>
   );
 }

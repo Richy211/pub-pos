@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 
 function ProductForm({ onSubmit, initialData }) {
-  // 1. Incluimos category_id dentro del objeto form para que handleChange funcione con todo
+  // 1. Agregamos 'stock' al objeto inicial del form
   const [form, setForm] = useState({
     name: "",
     price: "",
-    category_id: "" 
+    category_id: "",
+    stock: "" // <-- Nuevo campo
   });
 
   const [loading, setLoading] = useState(false);
@@ -16,12 +17,13 @@ function ProductForm({ onSubmit, initialData }) {
       setForm({
         name: initialData.name || "",
         price: initialData.price || "",
-        category_id: initialData.category_id || "", // Usamos el ID de la base de datos
+        category_id: initialData.category_id || "",
+        stock: initialData.stock ?? 0, // <-- Cargamos el stock existente
       });
     }
   }, [initialData]);
 
-  // 🔹 MANEJO INPUTS (Ahora este maneja nombre, precio y categoría)
+  // 🔹 MANEJO INPUTS (Sigue funcionando para todo gracias al name)
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -29,11 +31,9 @@ function ProductForm({ onSubmit, initialData }) {
     });
   };
 
-  // 🔹 SUBMIT
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Validar que se haya seleccionado una categoría
     if (!form.category_id) {
       alert("Por favor, selecciona una categoría");
       return;
@@ -41,12 +41,11 @@ function ProductForm({ onSubmit, initialData }) {
 
     setLoading(true);
     
-    // Enviamos el objeto form completo que ya tiene los nombres correctos para el backend
+    // Enviamos el objeto form completo (incluyendo stock)
     onSubmit(form);
     
-    // Opcional: limpiar formulario si no es edición
     if (!initialData) {
-      setForm({ name: "", price: "", category_id: "" });
+      setForm({ name: "", price: "", category_id: "", stock: "" });
     }
     setLoading(false);
   };
@@ -82,11 +81,22 @@ function ProductForm({ onSubmit, initialData }) {
           className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
+        {/* STOCK (NUEVO CAMPO) */}
+        <input
+          type="number"
+          name="stock"
+          required
+          placeholder="Cantidad / Stock inicial"
+          value={form.stock}
+          onChange={handleChange}
+          className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
         {/* CATEGORÍA */}
         <select
           name="category_id" 
           required
-          value={form.category_id} // Es importante que el select tenga el value vinculado al estado
+          value={form.category_id}
           onChange={handleChange}
           className="border border-gray-300 rounded-lg px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >

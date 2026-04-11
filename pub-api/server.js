@@ -106,40 +106,41 @@ router.get("/products", (req, res) => {
 });
 
 router.post("/products", (req, res) => {
-  const { name, price, category_id } = req.body;
+  const { name, price, category_id, stock } = req.body;
 
-  // 1. Declaramos la variable que faltaba para que Node no lance el ReferenceError
-  // Si no llega category_id, le ponemos null para que la DB lo acepte
-  const finalCategory = category_id || null;
+  // Forzamos que sean números para que MySQL no se queje
+  const finalCategory = category_id ? parseInt(category_id) : null;
+  const finalStock = stock ? parseInt(stock) : 0;
+  const finalPrice = price ? parseFloat(price) : 0;
 
-  // 2. Ahora sí la usamos en el query (3 columnas, 3 signos, 3 valores)
   db.query(
-    "INSERT INTO products (name, price, category_id) VALUES (?, ?, ?)",
-    [name, price, finalCategory],
+    "INSERT INTO products (name, price, category_id, stock) VALUES (?, ?, ?, ?)",
+    [name, finalPrice, finalCategory, finalStock],
     (err, result) => {
       if (err) {
-        console.error("❌ Error SQL al crear producto:", err);
+        console.error("❌ ERROR SQL POST:", err.message);
         return res.status(500).json({ error: err.message });
       }
-
-      res.status(201).json({
-        message: "Producto creado con éxito",
-        id: result.insertId
-      });
+      res.status(201).json({ message: "Producto creado", id: result.insertId });
     }
   );
 });
 
-
-
 router.put("/products/:id", (req, res) => {
-  const { name, price } = req.body;
+  const { name, price, stock, category_id } = req.body;
+
+  const finalCategory = category_id ? parseInt(category_id) : null;
+  const finalStock = stock ? parseInt(stock) : 0;
+  const finalPrice = price ? parseFloat(price) : 0;
 
   db.query(
-    "UPDATE products SET name = ?, price = ? WHERE id = ?",
-    [name, price, req.params.id],
+    "UPDATE products SET name = ?, price = ?, stock = ?, category_id = ? WHERE id = ?",
+    [name, finalPrice, finalStock, finalCategory, req.params.id],
     (err) => {
-      if (err) return res.status(500).json(err);
+      if (err) {
+        console.error("❌ ERROR SQL PUT:", err.message);
+        return res.status(500).json({ error: err.message });
+      }
       res.json({ message: "Producto actualizado" });
     }
   );
@@ -527,24 +528,25 @@ router.delete("/order-items/:id", (req, res) => {
 });
 
 router.get("/reportes/ventas-totales", (req, res) => {
-  // Consulta de Totales
+  // 1. Totales generales para las tarjetas superiores
   const statsQuery = `
     SELECT 
-      CAST(IFNULL(SUM(total), 0) AS DECIMAL(10,2)) as totalVentas,
-      CAST(IFNULL(SUM(total * 0.7), 0) AS DECIMAL(10,2)) as utilidad, 
-      COUNT(*) as ordenesPagadas
-    FROM orders 
-    WHERE status = 'paid'
+      CAST(IFNULL(SUM(oi.quantity * oi.price), 0) AS DECIMAL(10,2)) as totalVentas,
+      CAST(IFNULL(SUM(oi.quantity * (oi.price - oi.cost)), 0) AS DECIMAL(10,2)) as utilidad, 
+      (SELECT COUNT(*) FROM orders WHERE status = 'paid') as ordenesPagadas
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.status = 'paid'
   `;
 
-  // Consulta de Gráfico usando PAID_AT
-  // Usamos COALESCE por si acaso paid_at es nulo, use created_at como respaldo
+  // 2. Gráfico: Sumamos cantidad * precio agrupado por día
   const graphQuery = `
     SELECT 
-      DATE(COALESCE(paid_at, created_at)) as fecha, 
-      SUM(total) as total
-    FROM orders
-    WHERE status = 'paid'
+      DATE_FORMAT(o.created_at, '%Y-%m-%d') as fecha, 
+      SUM(oi.quantity * oi.price) as total
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.status = 'paid'
     GROUP BY fecha
     ORDER BY fecha ASC
     LIMIT 7
