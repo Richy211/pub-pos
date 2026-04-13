@@ -1,4 +1,4 @@
-console.log("🔥 BACKEND LIMPIO, UNIFICADO Y FUNCIONANDO");
+console.log("🔥 BACKEND TOTAL: MESAS + COMPRAS UNIFICADAS");
 
 const express = require("express");
 const jwt = require("jsonwebtoken");
@@ -16,17 +16,6 @@ const SECRET = "secreto_super_seguro";
 app.use(cors());
 app.use(express.json());
 
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader) return res.status(403).json({ message: "No autorizado" });
-  const token = authHeader.split(" ")[1];
-  jwt.verify(token, SECRET, (err, decoded) => {
-    if (err) return res.status(401).json({ message: "Token inválido" });
-    req.user = decoded;
-    next();
-  });
-};
-
 /* ===============================
     AUTH
 ================================ */
@@ -43,17 +32,8 @@ router.post("/login", (req, res) => {
   });
 });
 
-router.post("/register", async (req, res) => {
-  const { username, password, role } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
-  db.query("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", [username, hashedPassword, role], (err) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Usuario creado" });
-  });
-});
-
 /* ===============================
-    PRODUCTS
+    PRODUCTS (CRUD)
 ================================ */
 router.get("/products", (req, res) => {
   const query = "SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON p.category_id = c.id";
@@ -89,7 +69,7 @@ router.delete("/products/:id", (req, res) => {
 });
 
 /* ===============================
-    TABLES & ORDERS
+    TABLES & ORDERS (LAS MESAS)
 ================================ */
 router.get("/tables", (req, res) => {
   const query = "SELECT t.id, t.number, CASE WHEN EXISTS (SELECT 1 FROM orders o WHERE o.table_id = t.id AND o.status = 'open') THEN 'occupied' ELSE 'available' END as status FROM tables t";
@@ -164,152 +144,102 @@ router.post("/close-order", (req, res) => {
 /* ===============================
     ADMIN & PURCHASES (COMPRAS)
 ================================ */
-
-// 1. Listar todas las compras con nombres de productos agrupados
-// 1. Listar todas las compras (Versión blindada sin errores de columna)
 router.get("/admin/compras", (req, res) => {
   const sql = `
-    SELECT 
-      c.id, 
-      c.date, 
-      c.total, 
-      p.nombre AS proveedor_nombre,
-      GROUP_CONCAT(prod.name SEPARATOR ', ') AS productos_comprados
+    SELECT c.id, c.date, c.total, p.nombre AS proveedor_nombre,
+    GROUP_CONCAT(prod.name SEPARATOR ', ') AS productos_comprados
     FROM compras c
     LEFT JOIN proveedores p ON c.proveedor_id = p.id
     LEFT JOIN compras_items ci ON c.id = ci.purchase_id
     LEFT JOIN products prod ON ci.product_id = prod.id
-    GROUP BY c.id 
-    ORDER BY c.date DESC
-  `;
+    GROUP BY c.id ORDER BY c.date DESC`;
   db.query(sql, (err, results) => {
-    if (err) {
-      console.error("❌ ERROR EN LISTADO:", err.message);
-      return res.status(500).json({ error: err.message });
-    }
+    if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
 });
 
-// 2. Obtener detalle de una compra específica
-router.get("/admin/compras-detalle/:id", (req, res) => {
-  const query = `
-    SELECT ci.quantity, ci.price, p.name, (ci.quantity * ci.price) as subtotal
-    FROM compras_items ci
-    INNER JOIN products p ON ci.product_id = p.id
-    WHERE ci.purchase_id = ?`;
-  db.query(query, [req.params.id], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(result);
-  });
-});
-
-// 3. ELIMINAR COMPRA (Unificado y Corregido)
-router.delete("/admin/compras/:id", (req, res) => {
-  const id = req.params.id;
-  console.log("🗑️ Eliminando compra ID:", id);
-  db.query("DELETE FROM compras_items WHERE purchase_id = ?", [id], (err) => {
-    if (err) return res.status(500).json(err);
-    db.query("DELETE FROM compras WHERE id = ?", [id], (err, result) => {
-      if (err) return res.status(500).json(err);
-      res.json({ message: "Eliminado con éxito" });
-    });
-  });
-});
-
-// 4. Guardar Compra Completa + Sube Stock (Transacción)
 router.post("/admin/compras-completas", (req, res) => {
   const { proveedor_id, date, total_neto, iva, total, items } = req.body;
+
   db.beginTransaction((err) => {
     if (err) return res.status(500).json(err);
+
+    // SQL usando exactamente los nombres de tu captura: proveedor_id, date, total_neto, iva, total, status
     const sqlCompra = "INSERT INTO compras (proveedor_id, date, total_neto, iva, total, status) VALUES (?, ?, ?, ?, ?, 'recibido')";
+    
     db.query(sqlCompra, [proveedor_id, date, total_neto, iva, total], (err, result) => {
-      if (err) return db.rollback(() => res.status(500).json(err));
+      if (err) {
+        console.error("❌ ERROR EN TABLA COMPRAS:", err.message);
+        return db.rollback(() => res.status(500).json({ error: err.message }));
+      }
+
       const purchaseId = result.insertId;
+
       const queries = items.map(item => {
         return new Promise((resolve, reject) => {
+          // Registro en el historial
           db.query("INSERT INTO compras_items (purchase_id, product_id, quantity, price) VALUES (?, ?, ?, ?)",
             [purchaseId, item.product_id, item.quantity, item.price_unit], (err) => {
-            if (err) return reject(err);
-            db.query("UPDATE products SET stock = stock + ?, cost = ? WHERE id = ?", 
-              [item.quantity, item.price_unit, item.product_id], (err) => {
               if (err) return reject(err);
-              resolve();
+
+              // UPDATE DE STOCK: Aquí es donde la Corona sube de 83 a 100
+              const sqlUpdate = "UPDATE products SET stock = stock + ?, cost = ? WHERE id = ?";
+              db.query(sqlUpdate, [item.quantity, item.price_unit, item.product_id], (err) => {
+                if (err) return reject(err);
+                resolve();
+              });
             });
-          });
         });
       });
-      Promise.all(queries).then(() => {
-        db.commit(err => {
-          if (err) return db.rollback(() => res.status(500).json(err));
-          res.json({ message: "Compra registrada y stock actualizado" });
+
+      Promise.all(queries)
+        .then(() => {
+          db.commit(err => {
+            if (err) return db.rollback(() => res.status(500).json(err));
+            res.json({ message: "Stock actualizado con éxito" });
+          });
+        })
+        .catch(err => {
+          console.error("❌ ERROR EN ITEMS:", err.message);
+          db.rollback(() => res.status(500).json({ error: err.message }));
         });
-      }).catch(err => db.rollback(() => res.status(500).json({ error: err.message })));
     });
   });
 });
 
+
 /* ===============================
-    REPORTS & OTHERS
+    REPORTS & PROVEEDORES
 ================================ */
 router.get("/admin/proveedores", (req, res) => {
-  db.query("SELECT id, nombre, contacto, telefono FROM proveedores ORDER BY nombre ASC", (err, result) => {
+  db.query("SELECT id, nombre FROM proveedores ORDER BY nombre ASC", (err, result) => {
     if (err) return res.status(500).json(err);
     res.json(result);
   });
 });
 
-router.get("/reportes/ventas-totales", (req, res) => {
-  const statsQuery = "SELECT CAST(IFNULL(SUM(oi.quantity * oi.price), 0) AS DECIMAL(10,2)) as totalVentas, CAST(IFNULL(SUM(oi.quantity * (oi.price - oi.cost)), 0) AS DECIMAL(10,2)) as utilidad, (SELECT COUNT(*) FROM orders WHERE status = 'paid') as ordenesPagadas FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE o.status = 'paid'";
-  db.query(statsQuery, (err, statsResult) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(statsResult[0]);
-  });
-});
-
-router.get("/sales-by-day", (req, res) => {
-  const query = `
-    SELECT 
-      DATE(o.created_at) as date,
-      SUM(oi.quantity * oi.price) as total
-    FROM orders o
-    JOIN order_items oi ON o.id = oi.order_id
-    WHERE o.status = 'paid'
-    GROUP BY DATE(o.created_at)
-    ORDER BY date ASC
-  `;
-
-  db.query(query, (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json(result);
-  });
-});
 router.get("/cash-close", (req, res) => {
   const query = `
-    SELECT 
-      COUNT(DISTINCT o.id) as total_ordenes,
-      COALESCE(SUM(oi.quantity * oi.price), 0) as total_ventas,
-      COALESCE(SUM(oi.quantity * (oi.price - IFNULL(oi.cost, 0))), 0) as total_utilidad
-    FROM orders o
-    LEFT JOIN order_items oi ON o.id = oi.order_id
-    WHERE o.status = 'paid'
-  `;
-
+    SELECT COUNT(DISTINCT o.id) as total_ordenes,
+    COALESCE(SUM(oi.quantity * oi.price), 0) as total_ventas,
+    COALESCE(SUM(oi.quantity * (oi.price - IFNULL(oi.cost, 0))), 0) as total_utilidad
+    FROM orders o LEFT JOIN order_items oi ON o.id = oi.order_id WHERE o.status = 'paid'`;
   db.query(query, (err, result) => {
-    if (err) {
-      console.error("❌ ERROR CASH CLOSE:", err);
-      return res.status(500).json({ error: err.message });
-    }
-
+    if (err) return res.status(500).json({ error: err.message });
     res.json(result[0]);
   });
 });
 
+router.get("/sales-by-day", (req, res) => {
+  const query = `SELECT DATE(o.created_at) as date, SUM(oi.quantity * oi.price) as total FROM orders o JOIN order_items oi ON o.id = oi.order_id WHERE o.status = 'paid' GROUP BY DATE(o.created_at) ORDER BY date ASC`;
+  db.query(query, (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result);
+  });
+});
 
-app.use("/api", router); // 🔥 Agregamos /api como prefijo global para evitar el 404
+app.use("/api", router);
 app.use("/", router);
 
-
-app.listen(5000, () => {
-  console.log("🚀 Servidor corriendo en http://localhost:5000");
-});
+app.listen(5000, () => console.log("🚀 Servidor corriendo en puerto 5000"));
