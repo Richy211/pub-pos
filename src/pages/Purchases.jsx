@@ -1,194 +1,103 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "../services/api";
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer
+} from "recharts";
 
 export default function Purchases() {
-  const [suppliers, setSuppliers] = useState([]);
-  const [products, setProducts] = useState([]);
 
-  const [supplier, setSupplier] = useState("");
-  const [product, setProduct] = useState("");
-  const [quantity, setQuantity] = useState(1);
+  const [data, setData] = useState(null);
+  const [salesByDay, setSalesByDay] = useState([]);
 
-  const [items, setItems] = useState([]);
-
-  const [success, setSuccess] = useState(false);
-
-  // 🔥 cargar datos
+  // 🔹 RESUMEN GENERAL
   useEffect(() => {
-    fetch("http://localhost:5000/suppliers")
-      .then(res => res.json())
-      .then(data => setSuppliers(data));
-
-    fetch("http://localhost:5000/products")
-      .then(res => res.json())
-      .then(data => setProducts(data));
+    api.get("/cash-close")
+      .then(res => {
+        console.log("RESUMEN:", res.data);
+        setData(res.data);
+      })
+      .catch(err => console.error("Error resumen:", err));
   }, []);
 
-  // 🔥 agregar producto
-  const addItem = () => {
-    if (!product || quantity <= 0) return;
+  // 🔹 VENTAS POR DÍA
+  useEffect(() => {
+    api.get("/sales-by-day")
+      .then(res => {
+        console.log("SALES BY DAY RAW:", res.data);
+        setSalesByDay(res.data);
+      })
+      .catch(err => console.error("Error sales-by-day:", err));
+  }, []);
 
-    const selectedProduct = products.find(p => p.id == product);
+  // 🔥 TRANSFORMACIÓN CLAVE (AQUÍ ESTABA EL PROBLEMA)
+  const chartData = salesByDay.map(item => ({
+    name: item.date?.split("T")[0],
+    value: Number(item.total) || 0
+  }));
 
-    const newItem = {
-      product_id: product,
-      name: selectedProduct?.name,
-      quantity: Number(quantity),
-      price: selectedProduct?.price || 0,
-    };
+  console.log("CHART DATA:", chartData);
 
-    setItems([...items, newItem]);
-
-    // limpiar inputs
-    setProduct("");
-    setQuantity(1);
-  };
-
-  // 🔥 total
-  const total = items.reduce(
-    (acc, item) => acc + item.quantity * item.price,
-    0
-  );
-
-  // 🔥 submit
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!supplier || items.length === 0) {
-      alert("Completa proveedor y agrega productos");
-      return;
-    }
-
-    const token = localStorage.getItem("token");
-
-    const purchase = {
-      supplier_id: supplier,
-      products: items.map(item => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_price: item.price,
-      })),
-    };
-
-    try {
-      const res = await fetch("http://localhost:5000/purchases", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(purchase),
-      });
-
-      const data = await res.json();
-
-      console.log("RESPUESTA:", data);
-
-      // ✅ mostrar éxito
-      setSuccess(true);
-
-      // ✅ limpiar TODO
-      setSupplier("");
-      setProduct("");
-      setQuantity(1);
-      setItems([]);
-
-      // 🔥 ocultar mensaje después de 3 seg
-      setTimeout(() => setSuccess(false), 3000);
-
-    } catch (error) {
-      console.error("ERROR:", error);
-    }
-  };
+  if (!data) return <p className="text-white p-4">Cargando reporte...</p>;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Formulario de Compras</h1>
+    <div className="p-6 text-white">
 
-      {/* ✅ MENSAJE ÉXITO */}
-      {success && (
-        <div className="bg-green-600 text-white p-3 rounded shadow">
-          ✅ Compra guardada correctamente
-        </div>
-      )}
+      <h1 className="text-2xl font-bold mb-6">📊 REPORTE DE VENTAS</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {/* 🔹 TARJETAS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
-        {/* PROVEEDOR */}
-        <div>
-          <label>Proveedor</label>
-          <select
-            value={supplier}
-            onChange={(e) => setSupplier(e.target.value)}
-            className="w-full p-2 rounded bg-slate-800 text-white"
-          >
-            <option value="">Seleccione proveedor</option>
-            {suppliers.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+        <div className="bg-blue-600 p-4 rounded-xl">
+          <p className="text-sm">VENTAS TOTALES</p>
+          <h2 className="text-2xl font-bold">
+            ${Number(data.total_ventas).toLocaleString()}
+          </h2>
         </div>
 
-        {/* PRODUCTO */}
-        <div>
-          <label>Producto</label>
-          <select
-            value={product}
-            onChange={(e) => setProduct(e.target.value)}
-            className="w-full p-2 rounded bg-slate-800 text-white"
-          >
-            <option value="">Seleccione producto</option>
-            {products.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+        <div className="bg-purple-600 p-4 rounded-xl">
+          <p className="text-sm">UTILIDAD</p>
+          <h2 className="text-2xl font-bold">
+            ${Number(data.total_utilidad).toLocaleString()}
+          </h2>
         </div>
 
-        {/* CANTIDAD */}
-        <div>
-          <label>Cantidad</label>
-          <input
-            type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            className="w-full p-2 rounded bg-slate-800 text-white"
-            min="1"
-          />
+        <div className="bg-green-600 p-4 rounded-xl">
+          <p className="text-sm">ÓRDENES</p>
+          <h2 className="text-2xl font-bold">
+            {data.total_ordenes}
+          </h2>
         </div>
 
-        {/* BOTÓN AGREGAR */}
-        <button
-          type="button"
-          onClick={addItem}
-          className="bg-blue-600 px-3 py-2 rounded"
-        >
-          + Agregar producto
-        </button>
+      </div>
 
-        {/* LISTA */}
-        <div>
-          <h2 className="font-bold">Productos agregados</h2>
-          {items.map((item, i) => (
-            <div key={i} className="flex justify-between bg-slate-800 p-2 rounded mt-2">
-              <span>{item.name}</span>
-              <span>{item.quantity} x ${item.price}</span>
-            </div>
-          ))}
-        </div>
+      {/* 🔹 GRÁFICO */}
+      <div className="bg-slate-800 p-4 rounded mt-6 h-[350px]">
+        <h2 className="mb-4 font-semibold">📈 Ventas Diarias</h2>
 
-        {/* TOTAL */}
-        <div className="font-bold text-green-400">
-          Total compra: ${total}
-        </div>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData}>
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+            <Bar dataKey="value" fill="#22c55e" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
-        {/* GUARDAR */}
-        <button
-          type="submit"
-          className="bg-green-600 px-4 py-2 rounded"
-        >
-          Guardar compra
-        </button>
+      {/* 🔹 BOTÓN REFRESH */}
+      <button
+        onClick={() => window.location.reload()}
+        className="mt-6 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded"
+      >
+        🔄 Refrescar datos
+      </button>
 
-      </form>
     </div>
   );
 }

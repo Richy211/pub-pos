@@ -7,30 +7,17 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = () => {
-    api.post("/login", { username, password })
-      .then(res => {
-        console.log("LOGIN OK:", res.data);
-        localStorage.setItem("token", res.data.token);
-        
-        // 🚀 CAMBIO CLAVE AQUÍ: 
-        // En lugar de navigate("/"), usamos location.href para recargar App.jsx
-        window.location.href = "/"; 
-      })
-      .catch(err => {
-        console.error("ERROR LOGIN:", err.response?.data || err.message);
-        alert("Error login: Credenciales incorrectas");
-      });
-  };
+const handleLogin = () => {
+  api.post("/login", { username, password })
+    .then(res => {
+      localStorage.setItem("token", res.data.token);
+      window.location.href = "/";
+    })
+    .catch(() => {
+      alert("Error login: Credenciales incorrectas");
+    });
+};
 
-  // 🔥 LOGIN RÁPIDO (SOLO DESARROLLO)
-  // Este ya lo tenías bien con el reload()
-  const loginAs = (role) => {
-    const fakeToken = btoa(JSON.stringify({ role }));
-    const token = `fake.${fakeToken}.fake`;
-    localStorage.setItem("token", token);
-    window.location.href = "/"; 
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
@@ -59,23 +46,7 @@ export default function Login() {
           Entrar
         </button>
 
-        <div className="mt-6">
-          <p className="text-xs text-gray-500 mb-2 text-center uppercase tracking-widest">Acceso Rápido Dev</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => loginAs("admin")}
-              className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded text-sm"
-            >
-              Admin
-            </button>
-            <button
-              onClick={() => loginAs("garzon")}
-              className="w-full bg-yellow-600 hover:bg-yellow-700 p-2 rounded text-sm"
-            >
-              Garzón
-            </button>
-          </div>
-        </div>
+
       </div>
     </div>
   );

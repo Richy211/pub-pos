@@ -1,83 +1,103 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer
+} from "recharts";
 
 export default function Ventas() {
-  const [stats, setStats] = useState({
-    totalVentas: 0,
-    utilidad: 0,
-    ordenesPagadas: 0,
-    dataGrafico: []
-  });
 
-  const loadData = () => {
-    api.get("/reportes/ventas-totales")
-      .then(res => {
-        setStats({
-          totalVentas: res.data.totalVentas || 0,
-          utilidad: res.data.utilidad || 0,
-          ordenesPagadas: res.data.ordenesPagadas || 0,
-          dataGrafico: res.data.dataGrafico || []
-        });
-      })
-      .catch(err => console.error("Error al cargar ventas:", err));
-  };
+  const [data, setData] = useState(null);
+  const [salesByDay, setSalesByDay] = useState([]);
 
+  // 🔹 RESUMEN GENERAL
   useEffect(() => {
-    loadData();
+    api.get("/cash-close")
+      .then(res => {
+        console.log("RESUMEN:", res.data);
+        setData(res.data);
+      })
+      .catch(err => console.error("Error resumen:", err));
   }, []);
 
+  // 🔹 VENTAS POR DÍA (ESTO TE FALTABA 🔥)
+  useEffect(() => {
+    api.get("/sales-by-day")
+      .then(res => {
+        console.log("SALES BY DAY RAW:", res.data);
+        setSalesByDay(res.data);
+      })
+      .catch(err => console.error("Error sales-by-day:", err));
+  }, []);
+
+  // 🔥 TRANSFORMACIÓN PARA EL GRÁFICO
+  const chartData = salesByDay.map(item => ({
+    name: item.date?.split("T")[0],
+    value: Number(item.total) || 0
+  }));
+
+  console.log("CHART DATA:", chartData);
+
+  if (!data) return <p className="text-white p-4">Cargando reporte...</p>;
+
   return (
-    <div className="p-6 bg-gray-900 min-h-screen text-white">
-      <h1 className="text-3xl font-bold mb-6 text-green-400 font-mono">📊 REPORTE DE VENTAS</h1>
+    <div className="p-6 text-white">
 
-      {/* TARJETAS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-blue-600 p-6 rounded-xl border border-blue-400">
-          <p className="text-xs uppercase font-black">Ventas Totales</p>
-          <h2 className="text-4xl font-black">${Number(stats.totalVentas).toLocaleString('es-CL')}</h2>
+      <h1 className="text-2xl font-bold mb-6">📊 REPORTE DE VENTAS</h1>
+
+      {/* 🔹 TARJETAS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+        <div className="bg-blue-600 p-4 rounded-xl">
+          <p className="text-sm">VENTAS TOTALES</p>
+          <h2 className="text-2xl font-bold">
+            ${Number(data.total_ventas).toLocaleString()}
+          </h2>
         </div>
-        <div className="bg-purple-600 p-6 rounded-xl border border-purple-400">
-          <p className="text-xs uppercase font-black">Utilidad</p>
-          <h2 className="text-4xl font-black">${Number(stats.utilidad).toLocaleString('es-CL')}</h2>
+
+        <div className="bg-purple-600 p-4 rounded-xl">
+          <p className="text-sm">UTILIDAD</p>
+          <h2 className="text-2xl font-bold">
+            ${Number(data.total_utilidad).toLocaleString()}
+          </h2>
         </div>
-        <div className="bg-green-600 p-6 rounded-xl border border-green-400">
-          <p className="text-xs uppercase font-black">Órdenes</p>
-          <h2 className="text-4xl font-black">{stats.ordenesPagadas}</h2>
+
+        <div className="bg-green-600 p-4 rounded-xl">
+          <p className="text-sm">ÓRDENES</p>
+          <h2 className="text-2xl font-bold">
+            {data.total_ordenes}
+          </h2>
         </div>
+
       </div>
 
-      {/* GRÁFICO CON TAMAÑO FIJO (PARA MATAR EL BUG) */}
-      <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 overflow-x-auto">
-        <h3 className="text-xl font-bold mb-6">Ventas Diarias</h3>
-        
-<BarChart 
-  width={800} 
-  height={400} 
-  data={stats.dataGrafico}
-  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
->
-  <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-  <XAxis dataKey="fecha" stroke="#9CA3AF" />
-  <YAxis stroke="#9CA3AF" />
-  <Tooltip 
-    contentStyle={{ backgroundColor: '#1F2937', border: 'none' }}
-    // Aseguramos que busque la propiedad 'total' que viene del backend
-    formatter={(value) => [`$${Number(value).toLocaleString('es-CL')}`, "Venta"]}
-  />
-  <Bar dataKey="total" fill="#3B82F6" />
-</BarChart>
+      {/* 🔹 GRÁFICO */}
+      <div className="bg-slate-800 p-4 rounded mt-6 h-[350px]">
+        <h2 className="mb-4 font-semibold">📈 Ventas Diarias</h2>
 
-
-
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData}>
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+            <Bar dataKey="value" fill="#22c55e" />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
-      
-      <button 
-        onClick={loadData}
-        className="mt-6 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-bold"
+
+      {/* 🔹 BOTÓN REFRESH */}
+      <button
+        onClick={() => window.location.reload()}
+        className="mt-6 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded"
       >
-        REFRESCAR DATOS
+        🔄 Refrescar datos
       </button>
+
     </div>
   );
 }

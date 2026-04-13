@@ -17,7 +17,8 @@ export default function Payment() {
 
   const payOrder = async () => {
     try {
-      await api.post("/close-order", { order_id: Number(id) });
+      await api.post("/close-order", { 
+      order_id:id});
       alert("✅ Pago realizado con éxito");
       navigate("/tables");
     } catch (error) {
