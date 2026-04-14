@@ -45,12 +45,39 @@ router.get("/products", (req, res) => {
 
 router.post("/products", (req, res) => {
   const { name, price, category_id, stock } = req.body;
-  db.query("INSERT INTO products (name, price, category_id, stock) VALUES (?, ?, ?, ?)", 
-    [name, parseFloat(price) || 0, category_id ? parseInt(category_id) : null, parseInt(stock) || 0], (err, result) => {
+  const nuevoStock = parseInt(stock) || 0;
+
+  // 1. Buscamos si el producto ya existe por nombre
+  db.query("SELECT id, stock FROM products WHERE name = ?", [name], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ message: "Producto creado", id: result.insertId });
+
+    if (result.length > 0) {
+      // 🔥 YA EXISTE: Hacemos UPDATE sumando el stock
+      const productId = result[0].id;
+      db.query(
+        "UPDATE products SET stock = stock + ?, price = ?, category_id = ? WHERE id = ?",
+        [nuevoStock, parseFloat(price) || 0, category_id ? parseInt(category_id) : null, productId],
+        (err) => {
+          if (err) return res.status(500).json({ error: err.message });
+          res.json({ message: "Stock actualizado (producto existente)", id: productId });
+        }
+      );
+    } else {
+      // ✨ NO EXISTE: Creamos uno nuevo (INSERT)
+      db.query(
+        "INSERT INTO products (name, price, category_id, stock) VALUES (?, ?, ?, ?)",
+        [name, parseFloat(price) || 0, category_id ? parseInt(category_id) : null, nuevoStock],
+        (err, insertResult) => {
+          if (err) return res.status(500).json({ error: err.message });
+          res.status(201).json({ message: "Producto creado", id: insertResult.insertId });
+        }
+      );
+    }
   });
 });
+
+
+
 
 router.put("/products/:id", (req, res) => {
   const { name, price, stock, category_id } = req.body;
@@ -141,9 +168,9 @@ router.post("/close-order", (req, res) => {
   });
 });
 
-/* ===============================
+/* ============================================================================================================================
     ADMIN & PURCHASES (COMPRAS)
-================================ */
+================================================================================================================================ */
 router.get("/admin/compras", (req, res) => {
   const sql = `
     SELECT c.id, c.date, c.total, p.nombre AS proveedor_nombre,
@@ -208,10 +235,37 @@ router.post("/admin/compras-completas", (req, res) => {
   });
 });
 
+// Busca esta parte en tu server.js y reemplázala:
+router.get("/admin/compras-detalle/:id", (req, res) => {
+  const purchaseId = req.params.id;
+  console.log("🔍 Buscando detalle para la compra ID:", purchaseId);
 
-/* ===============================
+  const query = `
+    SELECT ci.quantity, ci.price, p.name, (ci.quantity * ci.price) as subtotal
+    FROM compras_items ci
+    INNER JOIN products p ON ci.product_id = p.id
+    WHERE ci.purchase_id = ?`;
+
+  db.query(query, [purchaseId], (err, result) => {
+    if (err) {
+      console.error("❌ Error en detalle:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    if (result.length === 0) {
+      console.log("⚠️ No se encontraron items para la compra:", purchaseId);
+      return res.status(404).json({ message: "No hay detalles para esta compra" });
+    }
+
+    res.json(result);
+  });
+});
+
+
+
+/*  ============================================================================================================================
     REPORTS & PROVEEDORES
-================================ */
+============================================================================================================================= */
 router.get("/admin/proveedores", (req, res) => {
   db.query("SELECT id, nombre FROM proveedores ORDER BY nombre ASC", (err, result) => {
     if (err) return res.status(500).json(err);
