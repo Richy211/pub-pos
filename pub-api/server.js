@@ -308,6 +308,30 @@ router.get("/sales-by-day", (req, res) => {
   });
 });
 
+// Reporte de productos más vendidos y menos movidos
+app.get("/api/reportes/movimiento-productos", (req, res) => {
+  const query = `
+    SELECT 
+        p.id,
+        p.name AS Producto,
+        p.stock AS Stock_Actual,
+        (SELECT IFNULL(SUM(quantity), 0) FROM compras_items WHERE product_id = p.id) AS Total_Comprado,
+        /* CAMBIAMOS ESTO: Quitamos el filtro de status = 'closed' para que veas tus ventas de inmediato */
+        (SELECT IFNULL(SUM(oi.quantity), 0) 
+         FROM order_items oi 
+         WHERE oi.product_id = p.id) AS Total_Vendido
+    FROM products p
+    GROUP BY p.id
+    ORDER BY Total_Vendido DESC;
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json(err);
+    res.json(results);
+  });
+});
+
+
 app.use("/api", router);
 app.use("/", router);
 

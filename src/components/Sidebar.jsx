@@ -1,207 +1,95 @@
-import { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import {
-  LayoutGrid,
-  ClipboardList,
-  CreditCard,
-  BarChart3,
-  Settings,
-  Menu,
-} from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Box, 
+  ShoppingCart, 
+  BarChart3, 
+  LogOut,
+  ClipboardList 
+} from "lucide-react"; 
 
-// 🔐 Decodificar token
-function parseJwt(token) {
-  try {
-    return JSON.parse(atob(token.split(".")[1]));
-  } catch {
-    return null;
-  }
-}
-
-const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
-  const [dark, setDark] = useState(true);
-
+export default function Sidebar() {
+  const navigate = useNavigate();
   const location = useLocation();
-
-  // 🔐 usuario y rol
+  
   const token = localStorage.getItem("token");
-  const user = token ? parseJwt(token) : null;
-  const role = user?.role?.toLowerCase();
+  let user = null;
+  try {
+    user = token ? JSON.parse(atob(token.split(".")[1])) : null;
+  } catch (e) {
+    console.error("Token no válido");
+  }
+  
+  const isAdmin = user?.role === 'admin';
 
-  // guardar estado sidebar
-  useEffect(() => {
-    localStorage.setItem("sidebar", collapsed ? "collapsed" : "expanded");
-  }, [collapsed]);
-
-  // tema oscuro
-  useEffect(() => {
-    if (dark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [dark]);
-
- // ... resto del código igual arriba
-
-  // 📌 SECCIONES ACTUALIZADAS
-const sections = [
-    {
-      title: "Ventas",
-      items: [
-        { name: "Mesas", path: "/tables", icon: <LayoutGrid size={20} /> },
-        { name: "Órdenes", path: "/order", icon: <ClipboardList size={20} /> },
-        { name: "Pagos", path: "/payment", icon: <CreditCard size={20} /> },
-      ],
-    },
-    {
-      title: "Reportes",
-      items: [
-        { name: "Ganancias", path: "/ventas", icon: <BarChart3 size={20} /> },
-      ],
-    },
-    {
-      title: "Gestión",
-      items: [
-        { name: "Inventario", path: "/products", icon: <ClipboardList size={20} /> },
-        { name: "Compras", path: "/admin-ventas", icon: <CreditCard size={20} /> },
-        { name: "Usuarios", path: "/users", icon: <LayoutGrid size={20} /> },
-        { name: "Ajustes", path: "/settings", icon: <Settings size={20} /> },
-      ],
-    },
-  ];
-// ... resto del código igual abajo
-
-
-
-  // 🔐 FILTRO POR ROL
-// 🔐 FILTRO DE SEGURIDAD TOTAL
-  const filteredSections = sections
-    .map((section) => {
-      // Si NO es admin, filtramos los items que no debe ver
-      if (role !== "admin") {
-        // En la sección "Admin", podrías querer dejar "Productos" visible 
-        // para que el garzón vea el stock, pero quitar "Usuarios" y "Compras".
-        if (section.title === "Admin") {
-          return {
-            ...section,
-            items: section.items.filter(item => item.name === "Productos") 
-          };
-        }
-        // Si es la sección de Reportes, la vaciamos completa
-        if (section.title === "Reportes") {
-          return { ...section, items: [] };
-        }
-      }
-      return section;
-    })
-    .filter((section) => section.items.length > 0); // 🔥 LA MAGIA: Si la sección quedó vacía, desaparece el título
-
-
-
-
-  const logout = () => {
-    localStorage.clear();
-    window.location.href = "/login";
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
+  const isActive = (path) => 
+    location.pathname === path 
+      ? "bg-green-600 text-white shadow-lg shadow-green-900/40 scale-105" 
+      : "hover:bg-gray-800 text-gray-400 hover:text-white";
+
   return (
-    <div
-      className={`h-screen flex flex-col p-4 transition-all duration-300
-      ${collapsed ? "w-20" : "w-64"}
-      bg-white text-slate-900 dark:bg-slate-900 dark:text-white`}
-    >
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
-        {!collapsed && (
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            🍺 Pub POS
-          </h2>
+    <div className="h-screen w-64 bg-gray-950 text-white flex flex-col p-4 border-r border-gray-800 shrink-0">
+      <div className="mb-10 mt-4 px-2">
+        <h2 className="text-3xl font-black text-green-500 tracking-tighter">PUB POS</h2>
+        <div className="h-1 w-12 bg-green-500 rounded-full mt-1"></div>
+      </div>
+      
+      <nav className="flex-1 space-y-2 overflow-y-auto">
+        <p className="text-[10px] font-bold text-gray-600 uppercase ml-3 mb-1">Operaciones</p>
+        
+        <Link to="/tables" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/tables")}`}>
+          <LayoutDashboard size={20} /> <span className="font-medium">Mesas</span>
+        </Link>
+
+        {isAdmin && (
+          <>
+            <p className="text-[10px] font-bold text-gray-600 uppercase ml-3 mb-1 mt-6">Administración</p>
+            
+            <Link to="/estadisticas" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/estadisticas")}`}>
+              <BarChart3 size={20} /> <span className="font-medium">Estadísticas</span>
+            </Link>
+
+            <Link 
+                to="/admin-ventas" 
+                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/admin-ventas")}`}
+              >
+                <ClipboardList size={20} /> 
+                <span className="font-medium">Admin Ventas</span>
+              </Link>
+            
+            <Link to="/inventory" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/inventory")}`}>
+              <Box size={20} /> <span className="font-medium">Inventario</span>
+            </Link>
+
+            <Link to="/compras" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/compras")}`}>
+              <ShoppingCart size={20} /> <span className="font-medium">Compras</span>
+            </Link>
+
+            <Link to="/cierre-diario" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/cierre-diario")}`}>
+              <ClipboardList size={20} /> <span className="font-medium">Cierre Diario</span>
+            </Link>
+
+            <Link to="/users" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/users")}`}>
+              <Users size={20} /> <span className="font-medium">Usuarios</span>
+            </Link>
+          </>
         )}
+      </nav>
 
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-2 rounded-lg hover:bg-slate-800"
+      <div className="border-t border-gray-800 pt-4 mt-auto">
+        <button 
+          onClick={handleLogout} 
+          className="w-full flex items-center gap-3 p-3 hover:bg-red-900/20 rounded-xl text-red-500 font-bold transition-all duration-200"
         >
-          <Menu size={20} />
+          <LogOut size={20} /> Cerrar Sesión
         </button>
-      </div>
-
-      {/* SECCIONES */}
-      <div className="space-y-6">
-        {filteredSections.map((section) => (
-          <div key={section.title}>
-            {!collapsed && (
-              <p className="text-xs uppercase text-slate-400 mb-2 px-2">
-                {section.title}
-              </p>
-            )}
-
-            <ul className="space-y-2">
-              {section.items.map((item) => (
-                <li key={item.path} className="relative group">
-                  <NavLink
-                    to={item.path}
-                    end
-                    className={({ isActive }) =>
-                      `
-                      flex items-center gap-3 p-3 rounded-lg transition-all
-                      ${
-                        isActive
-                          ? "bg-slate-300 dark:bg-slate-700"
-                          : "hover:bg-slate-200 dark:hover:bg-slate-800"
-                      }
-                      ${collapsed ? "justify-center" : ""}
-                    `
-                    }
-                  >
-                    {item.icon}
-                    {!collapsed && <span>{item.name}</span>}
-                  </NavLink>
-
-                  {/* TOOLTIP */}
-                  {collapsed && (
-                    <span
-                      className="absolute left-16 top-1/2 -translate-y-1/2
-                      bg-slate-800 text-white text-xs px-2 py-1 rounded
-                      opacity-0 group-hover:opacity-100 transition whitespace-nowrap"
-                    >
-                      {item.name}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-
-      {/* FOOTER */}
-      <div className="mt-auto pt-6 space-y-2">
-
-        {/* 🌗 TEMA */}
-        <button
-          onClick={() => setDark(!dark)}
-          className="w-full flex items-center justify-center gap-2 p-2 rounded-lg 
-          bg-slate-800 hover:bg-slate-700 transition"
-        >
-          {dark ? "☀️" : "🌙"}
-          {!collapsed && (dark ? "Modo Claro" : "Modo Oscuro")}
-        </button>
-
-        {/* 🚪 LOGOUT */}
-        <button
-          onClick={logout}
-          className="w-full flex items-center justify-center gap-2 p-2 rounded-lg 
-          bg-red-600 hover:bg-red-700 transition"
-        >
-          🚪 {!collapsed && "Cerrar sesión"}
-        </button>
-
       </div>
     </div>
   );
-};
-
-export default Sidebar;
+}

@@ -43,7 +43,11 @@ export const generateTicket = (data) => {
     doc.setFont("helvetica", "bold");
     doc.text(`TOTAL: $${(data.total || 0).toLocaleString()}`, 75, finalY, { align: "right" });
 
-    doc.output('dataurlnewwindow');
+   // doc.output('dataurlnewwindow');
+
+   // Por esto (Descarga directa):
+    const nombreArchivo = `Ticket_Orden_${data.order_id}.pdf`;
+    doc.save(nombreArchivo);
     
   } catch (error) {
     console.error("Error crítico en el PDF:", error);
