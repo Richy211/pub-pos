@@ -6,6 +6,8 @@ export default function PurchaseTable({ refreshSignal }) {
   const [loading, setLoading] = useState(true);
   const [detalleCompra, setDetalleCompra] = useState(null); // Para el Modal
   const [showModal, setShowModal] = useState(false);
+  const [detalleSeleccionado, setDetalleSeleccionado] = useState([]);
+const [modalAbierto, setModalAbierto] = useState(false);
 
   // 1. Cargar el historial
   const loadCompras = async () => {
@@ -54,6 +56,45 @@ export default function PurchaseTable({ refreshSignal }) {
   };
 
   if (loading) return <div className="p-4 text-white">Cargando historial...</div>;
+
+
+  const updateItem = (index, field, value) => {
+  const newItems = [...items];
+
+  if (field === "product_id") {
+    const id = parseInt(value);
+    newItems[index][field] = id;
+
+    // 🔥 BUSCAMOS EL PRECIO ACTUAL:
+    // Buscamos el producto en la lista que ya cargamos en el useEffect
+    const productoInfo = productosDisponibles.find(p => p.id === id);
+    
+    if (productoInfo) {
+      // Cargamos el precio de venta que ya tiene en la base de datos
+      newItems[index]["sale_price"] = productoInfo.price;
+      // También podrías cargar el último costo si quisieras: 
+      // newItems[index]["price_unit"] = productoInfo.cost || 0;
+    }
+  } else {
+    newItems[index][field] = value;
+  }
+
+  setItems(newItems);
+
+  // Recalcular totales (Neto e IVA)
+  const nuevoNeto = newItems.reduce((acc, item) => 
+    acc + (parseInt(item.quantity || 0) * parseFloat(item.price_unit || 0)), 0
+  );
+  
+  const nuevoIva = Math.round(nuevoNeto * 0.19);
+  
+  setFormData(prev => ({
+    ...prev,
+    total_neto: nuevoNeto,
+    iva: nuevoIva,
+    total: nuevoNeto + nuevoIva
+  }));
+};
 
   return (
     <div className="mt-8">

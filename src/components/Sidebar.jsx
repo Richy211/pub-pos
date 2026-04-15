@@ -46,7 +46,7 @@ const Sidebar = () => {
  // ... resto del código igual arriba
 
   // 📌 SECCIONES ACTUALIZADAS
-  const sections = [
+const sections = [
     {
       title: "Ventas",
       items: [
@@ -58,35 +58,48 @@ const Sidebar = () => {
     {
       title: "Reportes",
       items: [
-        { name: "Ventas", path: "/ventas", icon: <BarChart3 size={20} /> },
+        { name: "Ganancias", path: "/ventas", icon: <BarChart3 size={20} /> },
       ],
     },
     {
-      title: "Admin",
+      title: "Gestión",
       items: [
-        { name: "Productos", path: "/products", icon: <ClipboardList size={20} /> },
+        { name: "Inventario", path: "/products", icon: <ClipboardList size={20} /> },
+        { name: "Compras", path: "/admin-ventas", icon: <CreditCard size={20} /> },
         { name: "Usuarios", path: "/users", icon: <LayoutGrid size={20} /> },
-        // 🔄 CAMBIO AQUÍ: Ahora apunta a la nueva ruta y nombre
-        { name: "Adm. Compras", path: "/admin-ventas", icon: <CreditCard size={20} /> }, 
-        { name: "IVA", path: "/tax", icon: <BarChart3 size={20} /> },
-        { name: "Configuración", path: "/settings", icon: <Settings size={20} /> },
+        { name: "Ajustes", path: "/settings", icon: <Settings size={20} /> },
       ],
     },
   ];
-
 // ... resto del código igual abajo
 
 
 
   // 🔐 FILTRO POR ROL
-  const filteredSections = sections.map((section) => {
-    if (role !== "admin") {
-      if (section.title === "Admin" || section.title === "Reportes") {
-        return { ...section, items: [] };
+// 🔐 FILTRO DE SEGURIDAD TOTAL
+  const filteredSections = sections
+    .map((section) => {
+      // Si NO es admin, filtramos los items que no debe ver
+      if (role !== "admin") {
+        // En la sección "Admin", podrías querer dejar "Productos" visible 
+        // para que el garzón vea el stock, pero quitar "Usuarios" y "Compras".
+        if (section.title === "Admin") {
+          return {
+            ...section,
+            items: section.items.filter(item => item.name === "Productos") 
+          };
+        }
+        // Si es la sección de Reportes, la vaciamos completa
+        if (section.title === "Reportes") {
+          return { ...section, items: [] };
+        }
       }
-    }
-    return section;
-  });
+      return section;
+    })
+    .filter((section) => section.items.length > 0); // 🔥 LA MAGIA: Si la sección quedó vacía, desaparece el título
+
+
+
 
   const logout = () => {
     localStorage.clear();

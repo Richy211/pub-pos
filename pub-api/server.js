@@ -162,9 +162,24 @@ router.post("/order-items", (req, res) => {
 });
 
 router.post("/close-order", (req, res) => {
-  db.query("UPDATE orders SET status = 'paid' WHERE id = ?", [req.body.order_id], (err) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Orden pagada" });
+  const orderId = req.body.order_id;
+  
+  if (!orderId) {
+    return res.status(400).json({ error: "Falta el ID de la orden" });
+  }
+
+  db.query("UPDATE orders SET status = 'paid' WHERE id = ?", [orderId], (err, result) => {
+    if (err) {
+      console.error("Error SQL en close-order:", err);
+      return res.status(500).json({ error: "Error al actualizar la base de datos" });
+    }
+    
+    // Si result.affectedRows es 0, significa que el ID no existía
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Orden no encontrada" });
+    }
+
+    res.json({ message: "Orden pagada con éxito" });
   });
 });
 
