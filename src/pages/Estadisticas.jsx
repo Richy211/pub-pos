@@ -12,9 +12,17 @@ export default function Estadisticas() {
   const itemsPerPage = 5; 
 
   useEffect(() => {
-    api.get("/reportes/movimiento-productos")
-      .then(res => setDatos(res.data))
-      .catch(err => console.error(err));
+
+ // En tu useEffect de Estadisticas.jsx
+api.get("/reportes/movimiento-productos") 
+  .then(res => {
+    setDatos(res.data);
+  })
+  .catch(err => {
+    console.error("Error exacto:", err.config.url); // Esto te dirá a qué URL le está pegando
+  });
+
+
   }, []);
 
   const indexOfLastItem = currentPage * itemsPerPage;

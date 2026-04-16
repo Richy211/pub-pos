@@ -1,56 +1,35 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable"; // <--- Importación explícita
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
-export const generateTicket = (data) => {
-  try {
-    const doc = new jsPDF({
-      unit: "mm",
-      format: [80, 150], 
-    });
+// Exportamos con AMBOS nombres para que cualquier archivo lo encuentre
+export const generateTicket = (orderData) => {
+  const doc = new jsPDF();
+  
+  doc.setFontSize(18);
+  doc.text("PUB POS - Comprobante", 14, 22);
+  
+  doc.setFontSize(11);
+  doc.text(`Orden #: ${orderData.orderId || orderData.order_id}`, 14, 30);
+  doc.text(`Fecha: ${new Date().toLocaleString()}`, 14, 36);
 
-    // ... (encabezado igual) ...
+  // Usamos el plugin directamente para evitar el error de "not a function"
+  autoTable(doc, {
+    startY: 45,
+    head: [['Cant', 'Producto', 'Precio', 'Subtotal']],
+    body: orderData.items.map(i => [
+      i.quantity, 
+      i.name, 
+      `$${Number(i.price).toLocaleString('es-CL')}`, 
+      `$${(i.quantity * i.price).toLocaleString('es-CL')}`
+    ]),
+    headStyles: { fillColor: [46, 204, 113] }
+  });
 
-    // --- TABLA DE CONSUMO ---
-    const tableRows = (data.items || []).map(item => [
-      item.name || "Producto",
-      item.quantity || 1,
-      `$${((item.quantity || 1) * (item.price || 0)).toLocaleString()}`
-    ]);
+  const totalFinal = orderData.total || orderData.items.reduce((acc, i) => acc + (i.quantity * i.price), 0);
+  doc.text(`TOTAL: $${totalFinal.toLocaleString('es-CL')}`, 14, doc.lastAutoTable.finalY + 10);
 
-    // 🔥 CAMBIO AQUÍ: Usamos autoTable(doc, { ... }) en lugar de doc.autoTable
-    autoTable(doc, {
-      startY: 34,
-      head: [['Item', 'Cant', 'Total']],
-      body: tableRows,
-      theme: 'plain',
-      styles: { fontSize: 6, cellPadding: 0.5 },
-      columnStyles: {
-        0: { cellWidth: 35 },
-        1: { cellWidth: 10, halign: 'center' },
-        2: { cellWidth: 25, halign: 'right' }
-      },
-      headStyles: { fontStyle: 'bold' },
-      margin: { left: 2, right: 2 },
-    });
-
-    // --- TOTAL ---
-    // 🔥 CAMBIO AQUÍ: Usamos doc.lastAutoTable.finalY
-    const finalY = doc.lastAutoTable.finalY + 8;
-    
-    // ... (resto del código igual) ...
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL: $${(data.total || 0).toLocaleString()}`, 75, finalY, { align: "right" });
-
-   // doc.output('dataurlnewwindow');
-
-   // Por esto (Descarga directa):
-    const nombreArchivo = `Ticket_Orden_${data.order_id}.pdf`;
-    doc.save(nombreArchivo);
-    
-  } catch (error) {
-    console.error("Error crítico en el PDF:", error);
-    throw error;
-  }
+  doc.save(`Ticket_${orderData.orderId || orderData.order_id}.pdf`);
 };
+
+// Esto soluciona el problema de los nombres cruzados
+export const generarPDF = generateTicket;
