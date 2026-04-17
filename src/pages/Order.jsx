@@ -72,13 +72,46 @@ export default function Order() {
       });
   };
 
-  const removeItem = (itemId) => {
-    api.delete(`/order-items/${itemId}`)
+  // --- MODIFICADO: Asegúrate de que el ID coincida con tu ruta de Express ---
+const removeItem = (itemId) => {
+  // Verificamos en consola qué ID estamos mandando
+  console.log("Eliminando item ID:", itemId);
+  api.delete(`/order-items/${itemId}`)
+    .then(() => {
+      loadItems(order.id);
+      loadProducts();
+    })
+    .catch(err => console.error("Error al eliminar:", err));
+};
+
+// --- NUEVO: Función para trasladar de persona ---
+const transferItem = (itemId, currentSeat) => {
+  // Si tenemos 2 asientos, el destino del 1 es el 2, y viceversa. 
+  // O podemos abrir un pequeño prompt para preguntar el número.
+  const targetSeat = prompt("¿A qué persona quieres mover este producto?", currentSeat === 1 ? 2 : 1);
+  
+  if (targetSeat) {
+    api.put(`/order-items/${itemId}/transfer`, { seat_id: targetSeat })
       .then(() => {
         loadItems(order.id);
-        loadProducts();
-      });
-  };
+      })
+      .catch(err => alert("Error al trasladar"));
+  }
+};
+
+// Función para cancelar
+const cancelOrder = () => {
+  if (window.confirm("¿Estás seguro de cancelar TODA la orden? Se perderán los datos y se restaurará el stock.")) {
+    api.post(`/orders/${order.id}/cancel`)
+      .then(() => {
+        alert("Orden cancelada");
+        navigate("/"); // Volvemos al salón principal
+      })
+      .catch(err => console.error("Error al cancelar", err));
+  }
+};
+
+
 
   // --- NUEVO: Función para agregar un asiento nuevo ---
   const addSeat = () => {
@@ -188,11 +221,36 @@ export default function Order() {
                         </div>
                         <div className="space-y-1">
                             {seatItems.map(item => (
-                                <div key={item.id} className="flex justify-between text-xs bg-black/30 p-2 rounded">
-                                    <span>{item.name} x{item.quantity}</span>
-                                    <button onClick={() => removeItem(item.id)} className="text-red-500">✕</button>
-                                </div>
-                            ))}
+  <div key={item.id} className="flex justify-between text-xs bg-black/30 p-2 rounded items-center group">
+    <div className="flex flex-col">
+      <span className="font-bold">{item.name} x{item.quantity}</span>
+      <span className="text-gray-500">${(item.quantity * item.price).toLocaleString()}</span>
+    </div>
+    
+    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* BOTÓN TRASLADAR (Ícono de intercambio) */}
+      <button 
+        onClick={() => transferItem(item.id, seatNum)}
+        title="Mover a otra persona"
+        className="text-blue-400 hover:scale-125 transition-transform"
+      >
+        🔄
+      </button>
+
+      {/* BOTÓN ELIMINAR (El que te daba 404) */}
+      <button 
+        onClick={() => removeItem(item.id)} 
+        title="Eliminar"
+        className="text-red-500 hover:scale-125 transition-transform"
+      >
+        ❌
+      </button>
+    </div>
+  </div>
+))}
+
+
+
                         </div>
                     </div>
                 );
@@ -212,6 +270,15 @@ export default function Order() {
             >
               Ir a pagar / Dividir
             </button>
+
+              <button 
+                onClick={cancelOrder}
+                className="w-full mt-3 p-3 rounded-xl font-bold text-red-500 border border-red-900/50 hover:bg-red-900/20 transition-colors"
+              >
+                🚫 Cancelar Orden
+              </button>
+
+
           </div>
         </div>
       </div>

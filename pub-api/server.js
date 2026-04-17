@@ -107,6 +107,121 @@ router.delete("/products/:id", (req, res) => {
   });
 });
 
+// ELIMINAR ÍTEM DE UNA MESA Y DEVOLVER STOCK
+// --- 1. DISMINUIR O ELIMINAR ÍTEM (Resta de a 1) ---
+// --- 1. ELIMINAR O DISMINUIR ÍTEM (De a uno) ---
+router.delete("/order-items/:id", (req, res) => {
+  const itemId = req.params.id;
+
+  db.query("SELECT product_id, quantity FROM order_items WHERE id = ?", [itemId], (err, result) => {
+    if (err) return res.status(500).json({ error: "Error al buscar ítem", details: err });
+    if (result.length === 0) return res.status(404).json({ message: "Ítem no encontrado" });
+
+    const { product_id, quantity } = result[0];
+
+    if (quantity > 1) {
+      // Disminuimos cantidad en la orden y devolvemos 1 al stock
+      db.query("UPDATE order_items SET quantity = quantity - 1 WHERE id = ?", [itemId], (err) => {
+        if (err) return res.status(500).json(err);
+        db.query("UPDATE products SET stock = stock + 1 WHERE id = ?", [product_id]);
+        res.json({ message: "Cantidad disminuida" });
+      });
+    } else {
+      // Si queda solo uno, borramos la fila y devolvemos 1 al stock
+      db.query("DELETE FROM order_items WHERE id = ?", [itemId], (err) => {
+        if (err) return res.status(500).json(err);
+        db.query("UPDATE products SET stock = stock + 1 WHERE id = ?", [product_id]);
+        res.json({ message: "Ítem eliminado" });
+      });
+    }
+  });
+});
+
+// --- 2. TRASLADAR ÍTEM DE PERSONA ---
+router.put("/order-items/:id/transfer", (req, res) => {
+  const { id } = req.params;
+  const { seat_id } = req.body;
+  
+  if(!seat_id) return res.status(400).json({ message: "Falta el asiento de destino" });
+
+  db.query("UPDATE order_items SET seat_id = ? WHERE id = ?", [seat_id, id], (err) => {
+    if (err) return res.status(500).json({ error: "Error al trasladar", details: err });
+    res.json({ message: "Producto trasladado con éxito" });
+  });
+});
+
+// --- 3. CANCELAR ORDEN COMPLETA (Botón de pánico) ---
+router.post("/orders/:id/cancel", (req, res) => {
+  const orderId = req.params.id;
+
+  // 1. Buscamos todos los productos para devolver el stock
+  db.query("SELECT product_id, quantity FROM order_items WHERE order_id = ?", [orderId], (err, items) => {
+    if (err) return res.status(500).json(err);
+
+    // Si hay productos, devolvemos el stock de cada uno
+    if (items.length > 0) {
+      items.forEach(item => {
+        db.query("UPDATE products SET stock = stock + ? WHERE id = ?", [item.quantity, item.product_id]);
+      });
+    }
+
+    // 2. Borramos los items de la orden
+    db.query("DELETE FROM order_items WHERE order_id = ?", [orderId], (err) => {
+      if (err) return res.status(500).json(err);
+
+      // 3. Marcamos la orden como cancelada para liberar la mesa
+      db.query("UPDATE orders SET status = 'cancelled' WHERE id = ?", [orderId], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Orden cancelada y stock restaurado" });
+      });
+    });
+  });
+});
+
+
+
+
+
+
+// --- 2. TRASLADAR ÍTEM DE PERSONA ---
+router.put("/order-items/:id/transfer", (req, res) => {
+  const { id } = req.params;
+  const { seat_id } = req.body;
+  db.query("UPDATE order_items SET seat_id = ? WHERE id = ?", [seat_id, id], (err) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Producto trasladado con éxito" });
+  });
+});
+
+// --- 3. CANCELAR ORDEN COMPLETA ---
+router.post("/orders/:id/cancel", (req, res) => {
+  const orderId = req.params.id;
+
+  // Primero recuperamos todos los items para devolver el stock a 'products'
+  db.query("SELECT product_id, quantity FROM order_items WHERE order_id = ?", [orderId], (err, items) => {
+    if (err) return res.status(500).json(err);
+
+    // Si hay items, devolvemos el stock de cada uno
+    if (items.length > 0) {
+      items.forEach(item => {
+        db.query("UPDATE products SET stock = stock + ? WHERE id = ?", [item.quantity, item.product_id]);
+      });
+    }
+
+    // Luego eliminamos los items de la orden
+    db.query("DELETE FROM order_items WHERE order_id = ?", [orderId], (err) => {
+      if (err) return res.status(500).json(err);
+
+      // Finalmente, cerramos la orden (o la eliminamos, según prefieras)
+      // Aquí la marcamos como 'cancelled' para que la mesa quede libre
+      db.query("UPDATE orders SET status = 'cancelled' WHERE id = ?", [orderId], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Orden cancelada y stock restaurado" });
+      });
+    });
+  });
+});
+
 /* ===============================
     TABLES & ORDERS
 ================================ */
@@ -158,46 +273,52 @@ router.get("/order-items/:orderId", (req, res) => {
 });
 
 router.post("/order-items", (req, res) => {
-  // 1. Recibimos el seat_id desde el frontend
-  const { order_id, product_id, seat_id } = req.body; 
-  const currentSeat = seat_id || 1; // Por si acaso mandamos 1 por defecto
+  const { order_id, product_id, seat_id } = req.body;
+  const currentSeat = seat_id || 1; 
+
+  console.log("Recibido:", { order_id, product_id, currentSeat }); // Para debug
 
   db.query("SELECT price, cost, stock FROM products WHERE id = ?", [product_id], (err, result) => {
-    if (err) return res.status(500).json(err);
+    if (err) {
+      console.error("Error en SELECT product:", err);
+      return res.status(500).json(err);
+    }
+    
     if (result.length === 0) return res.status(404).json({ message: "Producto no existe" });
 
     const product = result[0];
-    if (product.stock <= 0) return res.status(400).json({ message: "Sin stock disponible" });
+    if (product.stock <= 0) return res.status(400).json({ message: "Sin stock" });
 
-    // 2. MODIFICADO: Buscamos si el producto ya existe PERO en ese mismo asiento
+    // Buscamos si ya existe ese producto en ese asiento específico
     db.query("SELECT * FROM order_items WHERE order_id = ? AND product_id = ? AND seat_id = ?", 
       [order_id, product_id, currentSeat], (err, items) => {
       
-      if (err) return res.status(500).json(err);
+      if (err) {
+        console.error("Error en SELECT order_items:", err);
+        return res.status(500).json(err);
+      }
 
       if (items.length > 0) {
-        // Si ya existe en ese asiento, sumamos cantidad
         db.query("UPDATE order_items SET quantity = quantity + 1 WHERE id = ?", [items[0].id], (err) => {
           if (err) return res.status(500).json(err);
           db.query("UPDATE products SET stock = stock - 1 WHERE id = ?", [product_id]);
-          res.json({ message: "Cantidad actualizada en el asiento" });
+          res.json({ message: "Cantidad actualizada" });
         });
       } else {
-        // 3. MODIFICADO: Si no existe, insertamos incluyendo el seat_id
+        // AGREGAR: Asegúrate de que las columnas coincidan EXACTO con tu DB
         db.query("INSERT INTO order_items (order_id, product_id, seat_id, quantity, price, cost) VALUES (?, ?, ?, 1, ?, ?)", 
           [order_id, product_id, currentSeat, product.price, product.cost], (err) => {
-          if (err) return res.status(500).json(err);
+          if (err) {
+            console.error("Error en INSERT:", err); // <--- ESTO TE DIRÁ EL PROBLEMA REAL
+            return res.status(500).json({ error: "Error al insertar en DB", detail: err.message });
+          }
           db.query("UPDATE products SET stock = stock - 1 WHERE id = ?", [product_id]);
-          res.json({ message: "Producto agregado al asiento" });
+          res.json({ message: "Producto agregado" });
         });
       }
     });
   });
 });
-
-
-
-
 
 
 router.post("/orders/:id/pay", (req, res) => {
@@ -325,11 +446,6 @@ router.get("/reportes/movimiento-productos", (req, res) => {
 });
 
 
-
-
-
-
-
 router.get("/cash-close", (req, res) => {
   const query = `
     SELECT COUNT(DISTINCT o.id) as total_ordenes,
@@ -385,7 +501,16 @@ router.get("/admin/reportes/movimiento-productos", (req, res) => {
   });
 });
 
-
+// RUTA PARA TRASLADAR ITEM
+router.put("/order-items/:id/transfer", (req, res) => {
+  const { id } = req.params;
+  const { seat_id } = req.body;
+  
+  db.query("UPDATE order_items SET seat_id = ? WHERE id = ?", [seat_id, id], (err) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Producto trasladado con éxito" });
+  });
+});
 
 // --- Iniciar Servidor ---
 app.use("/api", router);
