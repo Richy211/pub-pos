@@ -143,19 +143,25 @@ router.get("/orders/table/:tableId", (req, res) => {
 });
 
 router.get("/order-items/:orderId", (req, res) => {
-  const query = `
-    SELECT oi.id, oi.quantity, p.name, p.price, (oi.quantity * p.price) as subtotal 
+  const { orderId } = req.params;
+  // ASEGÚRATE de incluir seat_id en el SELECT
+  const sql = `
+    SELECT oi.*, p.name 
     FROM order_items oi 
     JOIN products p ON oi.product_id = p.id 
     WHERE oi.order_id = ?`;
-  db.query(query, [req.params.orderId], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(result);
+  
+  db.query(sql, [orderId], (err, results) => {
+    if (err) return res.status(500).send(err);
+    res.json(results);
   });
 });
 
 router.post("/order-items", (req, res) => {
-  const { order_id, product_id } = req.body;
+  // 1. Recibimos el seat_id desde el frontend
+  const { order_id, product_id, seat_id } = req.body; 
+  const currentSeat = seat_id || 1; // Por si acaso mandamos 1 por defecto
+
   db.query("SELECT price, cost, stock FROM products WHERE id = ?", [product_id], (err, result) => {
     if (err) return res.status(500).json(err);
     if (result.length === 0) return res.status(404).json({ message: "Producto no existe" });
@@ -163,39 +169,50 @@ router.post("/order-items", (req, res) => {
     const product = result[0];
     if (product.stock <= 0) return res.status(400).json({ message: "Sin stock disponible" });
 
-    db.query("SELECT * FROM order_items WHERE order_id = ? AND product_id = ?", [order_id, product_id], (err, items) => {
+    // 2. MODIFICADO: Buscamos si el producto ya existe PERO en ese mismo asiento
+    db.query("SELECT * FROM order_items WHERE order_id = ? AND product_id = ? AND seat_id = ?", 
+      [order_id, product_id, currentSeat], (err, items) => {
+      
       if (err) return res.status(500).json(err);
+
       if (items.length > 0) {
+        // Si ya existe en ese asiento, sumamos cantidad
         db.query("UPDATE order_items SET quantity = quantity + 1 WHERE id = ?", [items[0].id], (err) => {
           if (err) return res.status(500).json(err);
           db.query("UPDATE products SET stock = stock - 1 WHERE id = ?", [product_id]);
-          res.json({ message: "Cantidad actualizada" });
+          res.json({ message: "Cantidad actualizada en el asiento" });
         });
       } else {
-        db.query("INSERT INTO order_items (order_id, product_id, quantity, price, cost) VALUES (?, ?, 1, ?, ?)", 
-          [order_id, product_id, product.price, product.cost], (err) => {
+        // 3. MODIFICADO: Si no existe, insertamos incluyendo el seat_id
+        db.query("INSERT INTO order_items (order_id, product_id, seat_id, quantity, price, cost) VALUES (?, ?, ?, 1, ?, ?)", 
+          [order_id, product_id, currentSeat, product.price, product.cost], (err) => {
           if (err) return res.status(500).json(err);
           db.query("UPDATE products SET stock = stock - 1 WHERE id = ?", [product_id]);
-          res.json({ message: "Producto agregado" });
+          res.json({ message: "Producto agregado al asiento" });
         });
       }
     });
   });
 });
 
+
+
+
+
+
 router.post("/orders/:id/pay", (req, res) => {
   const orderId = req.params.id;
   
-  // 1. Marcamos como pagada
   db.query("UPDATE orders SET status = 'paid' WHERE id = ?", [orderId], (err, result) => {
     if (err) return res.status(500).json({ error: "Error en servidor" });
     
-    // 2. Buscamos los detalles para el PDF
+    // Agregamos oi.seat_id a la consulta para que el ticket pueda salir ordenado
     const sqlDetalle = `
-      SELECT oi.quantity, p.name, oi.price, (oi.quantity * oi.price) as subtotal
+      SELECT oi.quantity, p.name, oi.price, oi.seat_id, (oi.quantity * oi.price) as subtotal
       FROM order_items oi
       JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ?`;
+      WHERE oi.order_id = ?
+      ORDER BY oi.seat_id ASC`; // <--- Ordenado por asiento para el ticket
 
     db.query(sqlDetalle, [orderId], (err, items) => {
       if (err) return res.status(500).json({ error: "Error al obtener detalle" });
@@ -203,7 +220,7 @@ router.post("/orders/:id/pay", (req, res) => {
       res.json({ 
         message: "Orden pagada con éxito", 
         orderId, 
-        items // Enviamos los items para que el Frontend los imprima
+        items 
       });
     });
   });
