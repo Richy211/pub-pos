@@ -512,6 +512,96 @@ router.put("/order-items/:id/transfer", (req, res) => {
   });
 });
 
+// --- 1. RUTA DE ALERTAS (CORREGIDA CON ALIAS) ---
+router.get("/admin/compras/alertas-vencimiento", (req, res) => {
+  // Usamos el alias 'due_date' para que el frontend no tenga que cambiar nada
+  const sql = `
+    SELECT c.*, p.nombre AS proveedor, c.due_date_iva AS due_date 
+    FROM compras c
+    JOIN proveedores p ON c.proveedor_id = p.id
+    WHERE c.due_date_iva <= DATE_ADD(CURDATE(), INTERVAL 5 DAY) 
+    AND c.due_date_iva >= CURDATE()
+    AND c.status != 'paid'`;
+  
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// --- 2. RUTA DE GUARDADO (CORREGIDA) ---
+router.post("/admin/compras-completas", (req, res) => {
+  const { proveedor_id, date, due_date, total_neto, iva, total, items } = req.body;
+
+  db.beginTransaction((err) => {
+    if (err) return res.status(500).json({ error: "Error iniciando transacción" });
+
+    // Insertamos usando due_date_iva
+    const sqlCompra = "INSERT INTO compras (proveedor_id, date, due_date_iva, total_neto, iva, total, status) VALUES (?, ?, ?, ?, ?, ?, 'recibido')";
+    
+    db.query(sqlCompra, [proveedor_id, date, due_date, total_neto, iva, total], (err, result) => {
+      if (err) return db.rollback(() => res.status(500).json({ error: err.message }));
+
+      const purchaseId = result.insertId;
+      const queries = items.map(item => {
+        return new Promise((resolve, reject) => {
+          db.query("INSERT INTO compras_items (purchase_id, product_id, quantity, price) VALUES (?, ?, ?, ?)",
+            [purchaseId, item.product_id, item.quantity, item.price_unit], (err) => {
+              if (err) return reject(err);
+              db.query("UPDATE products SET stock = stock + ?, cost = ? WHERE id = ?", 
+                [item.quantity, item.price_unit, item.product_id], (err) => {
+                if (err) return reject(err);
+                resolve();
+              });
+            });
+        });
+      });
+
+      Promise.all(queries)
+        .then(() => {
+          db.commit(err => {
+            if (err) return db.rollback(() => res.status(500).json({ error: "Error al confirmar" }));
+            res.json({ message: "Compra registrada" });
+          });
+        })
+        .catch(err => db.rollback(() => res.status(500).json({ error: err.message })));
+    });
+  });
+});
+
+router.get("/admin/resumen-fiscal", (req, res) => {
+  // Vamos a ejecutar dos consultas separadas para aislar el error
+  const sqlCredito = `SELECT IFNULL(SUM(iva), 0) as total FROM compras 
+                      WHERE MONTH(date) = MONTH(CURRENT_DATE()) 
+                      AND YEAR(date) = YEAR(CURRENT_DATE())`;
+  
+  const sqlDebito = `SELECT IFNULL(SUM((oi.quantity * oi.price) * 0.19 / 1.19), 0) as total 
+                     FROM order_items oi 
+                     JOIN orders o ON oi.order_id = o.id 
+                     WHERE o.status = 'paid' 
+                     AND MONTH(o.created_at) = MONTH(CURRENT_DATE()) 
+                     AND YEAR(o.created_at) = YEAR(CURRENT_DATE())`;
+
+  db.query(sqlCredito, (err, resCredito) => {
+    if (err) return res.status(500).json({ error: "Error en Credito: " + err.message });
+    
+    db.query(sqlDebito, (err, resDebito) => {
+      if (err) return res.status(500).json({ error: "Error en Debito: " + err.message });
+      
+      res.json({
+        iva_credito: resCredito[0].total,
+        iva_debito: resDebito[0].total
+      });
+    });
+  });
+});
+
+
+
+
+
+
+
 // --- Iniciar Servidor ---
 app.use("/api", router);
 app.listen(5000, () => console.log("🚀 Servidor corriendo en puerto 5000"));

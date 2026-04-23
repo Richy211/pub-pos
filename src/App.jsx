@@ -12,6 +12,7 @@ import AdminVentas from "./pages/AdminVentas";
 import Sidebar from "./components/Sidebar";
 import { ToastContainer } from "react-toastify"; // Para que se vean los avisos
 import "react-toastify/dist/ReactToastify.css";
+import CierreFiscal from "./pages/CierreFiscal"; // <--- IMPORTA EL NUEVO COMPONENTE
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/estadisticas" element={<Estadisticas />} />
             <Route path="/cierre-diario" element={<CashClose />} />
             <Route path="/admin-ventas" element={<AdminVentas />} />
+            <Route path="/cierre-fiscal" element={<CierreFiscal />} />
             <Route path="/users" element={<Users />} />
 
             <Route path="*" element={<Tables />} />

@@ -75,6 +75,11 @@ export default function Sidebar() {
               <ClipboardList size={20} /> <span className="font-medium">Cierre Diario</span>
             </Link>
 
+            
+            <Link to="/cierre-fiscal" className="flex items-center gap-2 p-2 hover:bg-gray-700 rounded">
+              <span>⚖️</span> Cierre Fiscal
+            </Link>
+
             <Link to="/users" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/users")}`}>
               <Users size={20} /> <span className="font-medium">Usuarios</span>
             </Link>
