@@ -320,32 +320,42 @@ router.post("/order-items", (req, res) => {
   });
 });
 
-
 router.post("/orders/:id/pay", (req, res) => {
   const orderId = req.params.id;
-  
-  db.query("UPDATE orders SET status = 'paid' WHERE id = ?", [orderId], (err, result) => {
-    if (err) return res.status(500).json({ error: "Error en servidor" });
-    
-    // Agregamos oi.seat_id a la consulta para que el ticket pueda salir ordenado
-    const sqlDetalle = `
-      SELECT oi.quantity, p.name, oi.price, oi.seat_id, (oi.quantity * oi.price) as subtotal
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ?
-      ORDER BY oi.seat_id ASC`; // <--- Ordenado por asiento para el ticket
 
-    db.query(sqlDetalle, [orderId], (err, items) => {
-      if (err) return res.status(500).json({ error: "Error al obtener detalle" });
-      
-      res.json({ 
-        message: "Orden pagada con éxito", 
-        orderId, 
-        items 
+  // 1. Primero calculamos el total sumando los items de esa orden
+  const sqlSum = "SELECT SUM(quantity * price) as total_calculado FROM order_items WHERE order_id = ?";
+  
+  db.query(sqlSum, [orderId], (err, result) => {
+    if (err) return res.status(500).json({ error: "Error calculando total" });
+
+    const total = result[0].total_calculado || 0;
+
+    // 2. Ahora actualizamos el status Y guardamos el total calculado
+    const sqlUpdate = "UPDATE orders SET status = 'paid', total = ? WHERE id = ?";
+    
+    db.query(sqlUpdate, [total, orderId], (err, result) => {
+      if (err) return res.status(500).json({ error: "Error al pagar" });
+
+      // 3. Obtenemos el detalle (para el ticket)
+      const sqlDetalle = `SELECT oi.quantity, p.name, oi.price, oi.seat_id, (oi.quantity * oi.price) as subtotal
+                          FROM order_items oi
+                          JOIN products p ON oi.product_id = p.id
+                          WHERE oi.order_id = ?`;
+
+      db.query(sqlDetalle, [orderId], (err, items) => {
+        if (err) return res.status(500).json({ error: "Error al obtener detalle" });
+        res.json({ message: "Orden pagada y total guardado", items });
       });
     });
   });
 });
+
+
+
+
+
+
 /* ===============================
     ADMIN & PURCHASES
 ================================ */
@@ -596,10 +606,57 @@ router.get("/admin/resumen-fiscal", (req, res) => {
   });
 });
 
+// Obtener el total esperado del día (basado en órdenes pagadas)
+router.get("/admin/cierre-diario/total-esperado", (req, res) => {
+  const sql = `SELECT SUM(total) as esperado 
+               FROM orders 
+               WHERE status = 'paid' 
+               AND DATE(created_at) = CURDATE()`;
+  
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(result[0] || { esperado: 0 });
+  });
+});
 
+// Guardar el Arqueo
+router.post("/admin/arqueo", (req, res) => {
+  const { total_esperado, total_real, observaciones } = req.body;
+  const diferencia = total_real - total_esperado; // Si es negativo, faltó dinero
 
+  const sql = "INSERT INTO arqueos_caja (fecha, total_esperado, total_real, diferencia, observaciones) VALUES (CURDATE(), ?, ?, ?, ?)";
+  
+  db.query(sql, [total_esperado, total_real, diferencia, observaciones], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "Arqueo registrado", diferencia });
+  });
+});
 
+// Obtener el historial de arqueos
+router.get("/admin/arqueo/historial", (req, res) => {
+  const sql = "SELECT * FROM arqueos_caja ORDER BY fecha DESC, id DESC";
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(result);
+  });
+});
 
+// Obtener detalle de ventas por mesa para el cierre
+router.get("/admin/cierre-diario/detalle-mesas", (req, res) => {
+  const sql = `
+    SELECT t.number as mesa, SUM(o.total) as total_mesa
+    FROM orders o
+    JOIN tables t ON o.table_id = t.id
+    WHERE o.status = 'paid' 
+    AND DATE(o.created_at) = CURDATE()
+    GROUP BY t.id
+    ORDER BY t.number ASC`;
+  
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(result);
+  });
+});
 
 
 // --- Iniciar Servidor ---

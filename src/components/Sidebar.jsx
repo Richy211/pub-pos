@@ -80,6 +80,10 @@ export default function Sidebar() {
               <span>⚖️</span> Cierre Fiscal
             </Link>
 
+            <Link to="/arqueo" className="flex items-center gap-2 p-2 hover:bg-gray-700 rounded transition-colors">
+              <span>💰</span> Arqueo de Caja
+            </Link>
+
             <Link to="/users" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/users")}`}>
               <Users size={20} /> <span className="font-medium">Usuarios</span>
             </Link>
