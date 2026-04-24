@@ -659,6 +659,25 @@ router.get("/admin/cierre-diario/detalle-mesas", (req, res) => {
 });
 
 
+router.get("/admin/resumen-rentabilidad", (req, res) => {
+  const sql = `
+    SELECT 
+      SUM(oi.quantity * oi.price) as ventas_brutas,
+      SUM(oi.quantity * p.cost) as costo_total,
+      (SUM(oi.quantity * oi.price) - SUM(oi.quantity * p.cost)) as utilidad_neta
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.status = 'paid'
+    AND MONTH(o.created_at) = MONTH(CURRENT_DATE())
+    AND YEAR(o.created_at) = YEAR(CURRENT_DATE())`;
+  
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(result[0]);
+  });
+});
+
 // --- Iniciar Servidor ---
 app.use("/api", router);
 app.listen(5000, () => console.log("🚀 Servidor corriendo en puerto 5000"));
