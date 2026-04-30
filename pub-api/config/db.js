@@ -1,38 +1,22 @@
-/* const mysql = require("mysql2");
+const { Pool } = require("pg");
 
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "pub_pos",
+const db = new Pool({
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "rick2111",
+  database: process.env.DB_NAME || "pub_pos_pg",
+  port: process.env.DB_PORT || 5432,
+  ssl: false
 });
 
-db.connect((err) => {
-  if (err) {
-    console.log("Error DB:", err);
-  } else {
-    console.log("MySQL conectado");
-  }
-});
-
-module.exports = db; */
-
-const mysql = require("mysql2");
-
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306,
-});
-
-db.connect((err) => {
-  if (err) {
-    console.log("Error DB:", err);
-  } else {
-    console.log("MySQL conectado");
-  }
-});
+// Verificar conexión
+db.connect()
+  .then(client => {
+    console.log("PostgreSQL conectado");
+    client.release();
+  })
+  .catch(err => {
+    console.error("Error de conexión DB:", err.message);
+  });
 
 module.exports = db;
