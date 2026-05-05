@@ -1,7 +1,7 @@
 {
   "name": "pub-pos",
   "private": true,
-  "type":"module",
+  "type": "module",
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "^1.13.6",
+    "axios": "^1.16.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",

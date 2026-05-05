@@ -1,41 +1,20 @@
-/* import axios from "axios";
-
-const api = axios.create({
-  baseURL: "http://localhost:5000/api"
-});
-
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem("token");
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
-
-export default api; */
-
 import axios from "axios";
 
 const api = axios.create({
-  // Si existe la variable en Netlify, usa esa. Si no, usa localhost para desarrollo.
+  // Prioridad: Variable de Netlify > URL directa de Supabase
   baseURL: import.meta.env.VITE_SUPABASE_URL 
     ? `${import.meta.env.VITE_SUPABASE_URL}/rest/v1` 
-    : "http://localhost:5000/api"
+    : "https://wkgjtpqdzzipovkiqzrb.supabase.co/rest/v1"
 });
 
-// Esto es para que Supabase reconozca tus peticiones
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  
-  // Agregamos la API Key de Supabase si estamos en producción
-  if (import.meta.env.VITE_SUPABASE_ANON_KEY) {
-    config.headers.apikey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  }
+  // Usamos la anon key para todas las peticiones
+  const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "TU_ANON_KEY_MANUAL_AQUI_SI_FALLA_ENV";
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (apiKey) {
+    config.headers.apikey = apiKey;
+    config.headers.Authorization = token ? `Bearer ${token}` : `Bearer ${apiKey}`;
   }
 
   return config;
