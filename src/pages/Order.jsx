@@ -43,21 +43,28 @@ export default function Order() {
   }, [order]);
 
   const loadItems = (orderId) => {
-    api.get(`/order-items/${orderId}`)
+    api.get(`/order_items/${orderId}`)
       .then(res => setItems(res.data))
       .catch(err => console.error("Error items", err));
   }
 
-  const openOrder = () => {
-    api.post("/open-order", { table_id: id })
-      .then(res => setOrder(res.data))
-      .catch(err => alert("Error al abrir mesa"));
-  }
+const openOrder = () => {
+  // Cambiamos el guion medio por el bajo para que coincida con la tabla de Supabase
+  api.post("/open_order", { table_id: id }) 
+    .then(res => setOrder(res.data))
+    .catch(err => {
+      console.error("Error detallado:", err); // Agregamos esto para ver más info en consola
+      alert("Error al abrir mesa");
+    });
+}
+
+
+
 
   // --- MODIFICADO: Ahora incluimos el seat_id al enviar al backend ---
   const addProduct = (productId) => {
     if (!order?.id) return;
-    api.post("/order-items", { 
+    api.post("/order_items", { 
         order_id: order.id, 
         product_id: productId,
         seat_id: activeSeat // <--- Enviamos a qué asiento pertenece
@@ -76,7 +83,7 @@ export default function Order() {
 const removeItem = (itemId) => {
   // Verificamos en consola qué ID estamos mandando
   console.log("Eliminando item ID:", itemId);
-  api.delete(`/order-items/${itemId}`)
+  api.delete(`/order_items/${itemId}`)
     .then(() => {
       loadItems(order.id);
       loadProducts();
@@ -91,7 +98,7 @@ const transferItem = (itemId, currentSeat) => {
   const targetSeat = prompt("¿A qué persona quieres mover este producto?", currentSeat === 1 ? 2 : 1);
   
   if (targetSeat) {
-    api.put(`/order-items/${itemId}/transfer`, { seat_id: targetSeat })
+    api.put(`/order_items/${itemId}/transfer`, { seat_id: targetSeat })
       .then(() => {
         loadItems(order.id);
       })
