@@ -49,12 +49,15 @@ export default function Order() {
   }
 
 const openOrder = () => {
-  // Cambiamos el guion medio por el bajo para que coincida con la tabla de Supabase
-  api.post("/open_order", { table_id: id }) 
+  api.post("/open_order", { table_id: id })
     .then(res => setOrder(res.data))
     .catch(err => {
-      console.error("Error detallado:", err); // Agregamos esto para ver más info en consola
-      alert("Error al abrir mesa");
+      if (err.response?.status === 400) {
+        // Si ya existe, intentamos cargarla de nuevo en lugar de dar error
+        loadOrder();
+      } else {
+        alert("Error al abrir mesa");
+      }
     });
 }
 
