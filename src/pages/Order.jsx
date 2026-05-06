@@ -10,9 +10,8 @@ export default function Order() {
   const [order, setOrder] = useState(null);
   const [items, setItems] = useState([]);
 
-  // --- NUEVO: Estado para manejar los asientos ---
-  const [seats, setSeats] = useState([1]); // Empezamos con el Asiento 1
-  const [activeSeat, setActiveSeat] = useState(1); // El asiento que está seleccionado para recibir pedidos
+  const [seats, setSeats] = useState([1]); 
+  const [activeSeat, setActiveSeat] = useState(1); 
 
   const groupedProducts = products.reduce((acc, product) => {
     const categoryName = product.category ? product.category.trim() : "Otros";
@@ -26,10 +25,20 @@ export default function Order() {
     loadProducts();
   }, [id]);
 
+  // CORREGIDO: Usamos el filtro correcto para Supabase
   const loadOrder = () => {
-    api.get(`/orders/table/${id}`)
-      .then(res => setOrder(res.data || null))
-      .catch(err => console.error("Error cargando orden", err));
+    api.get(`/open_order?table_id=eq.${id}`)
+      .then(res => {
+        if (res.data && res.data.length > 0) {
+          setOrder(res.data[0]);
+        } else {
+          setOrder(null);
+        }
+      })
+      .catch(err => {
+        console.error("Error cargando orden", err);
+        setOrder(null);
+      });
   }
 
   const loadProducts = () => {
@@ -42,35 +51,35 @@ export default function Order() {
     if (order?.id) loadItems(order.id);
   }, [order]);
 
+  // CORREGIDO: Guion bajo en order_items
   const loadItems = (orderId) => {
-    api.get(`/order_items/${orderId}`)
+    api.get(`/order_items?order_id=eq.${orderId}`)
       .then(res => setItems(res.data))
       .catch(err => console.error("Error items", err));
   }
 
-const openOrder = () => {
-  api.post("/open_order", { table_id: id })
-    .then(res => setOrder(res.data))
-    .catch(err => {
-      if (err.response?.status === 400) {
-        // Si ya existe, intentamos cargarla de nuevo en lugar de dar error
-        loadOrder();
-      } else {
-        alert("Error al abrir mesa");
-      }
-    });
-}
+  // CORREGIDO: Guion bajo en open_order
+  const openOrder = () => {
+    api.post("/open_order", { table_id: id, status: 'open' })
+      .then(() => {
+        loadOrder(); // Recargamos para obtener el objeto completo
+      })
+      .catch(err => {
+        if (err.response?.status === 400) {
+          loadOrder();
+        } else {
+          alert("Error al abrir mesa");
+        }
+      });
+  }
 
-
-
-
-  // --- MODIFICADO: Ahora incluimos el seat_id al enviar al backend ---
+  // CORREGIDO: Guion bajo en order_items
   const addProduct = (productId) => {
     if (!order?.id) return;
     api.post("/order_items", { 
         order_id: order.id, 
         product_id: productId,
-        seat_id: activeSeat // <--- Enviamos a qué asiento pertenece
+        seat_id: activeSeat 
       })
       .then(() => {
         loadItems(order.id);
@@ -82,57 +91,46 @@ const openOrder = () => {
       });
   };
 
-  // --- MODIFICADO: Asegúrate de que el ID coincida con tu ruta de Express ---
-const removeItem = (itemId) => {
-  // Verificamos en consola qué ID estamos mandando
-  console.log("Eliminando item ID:", itemId);
-  api.delete(`/order_items/${itemId}`)
-    .then(() => {
-      loadItems(order.id);
-      loadProducts();
-    })
-    .catch(err => console.error("Error al eliminar:", err));
-};
-
-// --- NUEVO: Función para trasladar de persona ---
-const transferItem = (itemId, currentSeat) => {
-  // Si tenemos 2 asientos, el destino del 1 es el 2, y viceversa. 
-  // O podemos abrir un pequeño prompt para preguntar el número.
-  const targetSeat = prompt("¿A qué persona quieres mover este producto?", currentSeat === 1 ? 2 : 1);
-  
-  if (targetSeat) {
-    api.put(`/order_items/${itemId}/transfer`, { seat_id: targetSeat })
+  const removeItem = (itemId) => {
+    api.delete(`/order_items?id=eq.${itemId}`)
       .then(() => {
         loadItems(order.id);
+        loadProducts();
       })
-      .catch(err => alert("Error al trasladar"));
-  }
-};
+      .catch(err => console.error("Error al eliminar:", err));
+  };
 
-// Función para cancelar
-const cancelOrder = () => {
-  if (window.confirm("¿Estás seguro de cancelar TODA la orden? Se perderán los datos y se restaurará el stock.")) {
-    api.post(`/orders/${order.id}/cancel`)
-      .then(() => {
-        alert("Orden cancelada");
-        navigate("/"); // Volvemos al salón principal
-      })
-      .catch(err => console.error("Error al cancelar", err));
-  }
-};
+  const transferItem = (itemId, currentSeat) => {
+    const targetSeat = prompt("¿A qué persona quieres mover este producto?", currentSeat === 1 ? 2 : 1);
+    
+    if (targetSeat) {
+      api.patch(`/order_items?id=eq.${itemId}`, { seat_id: targetSeat })
+        .then(() => {
+          loadItems(order.id);
+        })
+        .catch(err => alert("Error al trasladar"));
+    }
+  };
 
+  const cancelOrder = () => {
+    if (window.confirm("¿Estás seguro de cancelar TODA la orden?")) {
+      api.delete(`/open_order?id=eq.${order.id}`)
+        .then(() => {
+          alert("Orden cancelada");
+          navigate("/");
+        })
+        .catch(err => console.error("Error al cancelar", err));
+    }
+  };
 
-
-  // --- NUEVO: Función para agregar un asiento nuevo ---
   const addSeat = () => {
     const nextSeat = seats.length + 1;
     setSeats([...seats, nextSeat]);
-    setActiveSeat(nextSeat); // Seleccionamos el nuevo automáticamente
+    setActiveSeat(nextSeat);
   };
 
   const goToPayment = () => navigate(`/payment/${order.id}`);
   
-  // Total general
   const total = items.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.price)), 0);
 
   if (!order) {
@@ -149,7 +147,6 @@ const cancelOrder = () => {
       <div className="bg-gray-950 p-4 flex justify-between items-center border-b border-gray-800">
         <h1 className="text-xl font-bold text-green-400">🍺 Pub POS - Mesa {id}</h1>
         
-        {/* NUEVO: Selector de Asientos en la cabecera o panel lateral */}
         <div className="flex gap-2 items-center">
           <span className="text-sm text-gray-400 mr-2 font-bold">ASIENTO ACTIVO:</span>
           {seats.map(s => (
@@ -171,7 +168,6 @@ const cancelOrder = () => {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* PANEL IZQUIERDO: PRODUCTOS (Se mantiene igual) */}
         <div className="w-2/3 p-6 overflow-y-auto">
           {Object.keys(groupedProducts).map(cat => (
             <div key={cat} className="mb-8">
@@ -208,15 +204,13 @@ const cancelOrder = () => {
           ))}
         </div>
 
-        {/* PANEL DERECHO: DETALLE AGRUPADO POR ASIENTO */}
         <div className="w-1/3 bg-gray-950 p-6 border-l border-gray-800 flex flex-col">
           <h2 className="text-xl font-bold mb-4">🧾 Detalle por Personas</h2>
           <div className="flex-1 overflow-y-auto space-y-6">
             {seats.map(seatNum => {
                 const seatItems = items.filter(item => {
-                // Si item.seat_id no existe, asumimos que es de la persona 1
-                const itemSeat = item.seat_id || 1; 
-                return Number(itemSeat) === Number(seatNum);
+                  const itemSeat = item.seat_id || 1; 
+                  return Number(itemSeat) === Number(seatNum);
                 });
                 
                 const seatTotal = seatItems.reduce((acc, i) => acc + (i.quantity * i.price), 0);
@@ -231,36 +225,17 @@ const cancelOrder = () => {
                         </div>
                         <div className="space-y-1">
                             {seatItems.map(item => (
-  <div key={item.id} className="flex justify-between text-xs bg-black/30 p-2 rounded items-center group">
-    <div className="flex flex-col">
-      <span className="font-bold">{item.name} x{item.quantity}</span>
-      <span className="text-gray-500">${(item.quantity * item.price).toLocaleString()}</span>
-    </div>
-    
-    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-      {/* BOTÓN TRASLADAR (Ícono de intercambio) */}
-      <button 
-        onClick={() => transferItem(item.id, seatNum)}
-        title="Mover a otra persona"
-        className="text-blue-400 hover:scale-125 transition-transform"
-      >
-        🔄
-      </button>
-
-      {/* BOTÓN ELIMINAR (El que te daba 404) */}
-      <button 
-        onClick={() => removeItem(item.id)} 
-        title="Eliminar"
-        className="text-red-500 hover:scale-125 transition-transform"
-      >
-        ❌
-      </button>
-    </div>
-  </div>
-))}
-
-
-
+                              <div key={item.id} className="flex justify-between text-xs bg-black/30 p-2 rounded items-center group">
+                                <div className="flex flex-col">
+                                  <span className="font-bold">{item.name} x{item.quantity}</span>
+                                  <span className="text-gray-500">${(item.quantity * item.price).toLocaleString()}</span>
+                                </div>
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => transferItem(item.id, seatNum)} className="text-blue-400 hover:scale-125 transition-transform">🔄</button>
+                                  <button onClick={() => removeItem(item.id)} className="text-red-500 hover:scale-125 transition-transform">❌</button>
+                                </div>
+                              </div>
+                            ))}
                         </div>
                     </div>
                 );
@@ -280,15 +255,12 @@ const cancelOrder = () => {
             >
               Ir a pagar / Dividir
             </button>
-
-              <button 
-                onClick={cancelOrder}
-                className="w-full mt-3 p-3 rounded-xl font-bold text-red-500 border border-red-900/50 hover:bg-red-900/20 transition-colors"
-              >
-                🚫 Cancelar Orden
-              </button>
-
-
+            <button 
+              onClick={cancelOrder}
+              className="w-full mt-3 p-3 rounded-xl font-bold text-red-500 border border-red-900/50 hover:bg-red-900/20 transition-colors"
+            >
+              🚫 Cancelar Orden
+            </button>
           </div>
         </div>
       </div>
