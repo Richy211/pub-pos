@@ -135,7 +135,6 @@ export default function Order() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col font-sans">
-      {/* Header */}
       <div className="bg-gray-950 p-4 flex justify-between items-center border-b border-gray-800">
         <h1 className="text-xl font-black text-green-400">🍺 Pub POS - Mesa {id}</h1>
         <div className="flex gap-2 items-center">
@@ -153,10 +152,11 @@ export default function Order() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* PANEL IZQUIERDO: PRODUCTOS POR CATEGORIA */}
+        {/* PANEL IZQUIERDO: PRODUCTOS POR CATEGORIA (CORREGIDO) */}
         <div className="w-2/3 p-6 overflow-y-auto">
           {Object.keys(groupedProducts).map(category => (
             <div key={`section-${category}`} className="mb-10">
+              {/* AQUÍ ESTÁ EL ARREGLO: Título dinámico por categoría */}
               <h2 className="text-sm font-black mb-4 text-green-500 uppercase tracking-[0.2em] border-b border-gray-800 pb-2">
                 {category}
               </h2>
@@ -167,7 +167,6 @@ export default function Order() {
                     onClick={() => p.stock > 0 && addProduct(p.id)} 
                     className={`relative p-4 rounded-2xl border-2 transition-all active:scale-95 ${p.stock <= 0 ? 'bg-gray-800 opacity-40 cursor-not-allowed' : 'bg-gray-800 border-transparent hover:border-green-500 cursor-pointer shadow-lg'}`}
                   >
-                    {/* Badge de Stock */}
                     <span className={`absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full ${p.stock > 5 ? 'bg-gray-700 text-gray-300' : 'bg-red-600 text-white animate-pulse'}`}>
                       {p.stock <= 0 ? 'AGOTADO' : `STK: ${p.stock}`}
                     </span>
@@ -188,13 +187,9 @@ export default function Order() {
           <div className="flex-1 overflow-y-auto space-y-4">
             {seats.map(seatNum => {
                 const seatItems = items.filter(item => (item.seat_id || 1) === seatNum);
-                
-                // Agrupamos items por producto para sumar cantidades en la vista
                 const aggregatedItems = seatItems.reduce((acc, item) => {
                   const pid = item.product_id;
-                  if (!acc[pid]) {
-                    acc[pid] = { ...item, displayQty: 0 };
-                  }
+                  if (!acc[pid]) acc[pid] = { ...item, displayQty: 0 };
                   acc[pid].displayQty += 1;
                   return acc;
                 }, {});
@@ -216,8 +211,8 @@ export default function Order() {
                             <span className="text-gray-200">{item.products?.name || '...'}</span>
                           </span>
                           <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-all">
-                            <button title="Trasladar" onClick={() => transferItem(item.id, seatNum)} className="hover:scale-125 transition-transform">🔄</button>
-                            <button title="Eliminar" onClick={() => removeItem(item.id)} className="text-red-500 hover:scale-125 transition-transform">❌</button>
+                            <button onClick={() => transferItem(item.id, seatNum)}>🔄</button>
+                            <button onClick={() => removeItem(item.id)} className="text-red-500">❌</button>
                           </div>
                         </div>
                       ))}
@@ -227,17 +222,12 @@ export default function Order() {
             })}
           </div>
 
-          {/* Footer Cuenta */}
           <div className="mt-6 pt-6 border-t border-gray-800">
             <div className="flex justify-between text-3xl font-black mb-6">
               <span className="text-gray-500 text-xs self-center uppercase tracking-[0.3em]">Total</span>
               <span className="text-green-400 drop-shadow-[0_0_10px_rgba(34,197,94,0.3)]">${total.toLocaleString()}</span>
             </div>
-            <button 
-              onClick={goToPayment} 
-              disabled={items.length === 0} 
-              className="w-full py-5 rounded-2xl bg-green-600 hover:bg-green-500 font-black text-lg disabled:opacity-20 shadow-lg transition-all active:scale-[0.98] uppercase tracking-tighter"
-            >
+            <button onClick={goToPayment} disabled={items.length === 0} className="w-full py-5 rounded-2xl bg-green-600 hover:bg-green-500 font-black text-lg disabled:opacity-20 shadow-lg transition-all active:scale-[0.98] uppercase tracking-tighter">
               Ir a Pagar
             </button>
             <button onClick={cancelOrder} className="w-full mt-4 text-[9px] text-red-500/40 hover:text-red-500 transition-colors uppercase font-bold tracking-widest">
