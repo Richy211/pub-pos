@@ -25,15 +25,13 @@ export default function Order() {
     loadProducts();
   }, [id]);
 
-const loadOrder = () => {
+  const loadOrder = () => {
     api.get(`/open_order?table_id=eq.${id}&status=eq.open`)
       .then(res => {
-        // Si no hay resultados o la respuesta es vacía, limpiamos el estado sí o sí
         if (res.data && res.data.length > 0) {
           setOrder(res.data[0]);
         } else {
-          console.log("No se encontró orden abierta, limpiando...");
-          setOrder(null); // Esto hará que aparezca el botón "ABRIR MESA"
+          setOrder(null);
         }
       })
       .catch(err => {
@@ -42,8 +40,6 @@ const loadOrder = () => {
       });
   }
 
-
-
   const loadProducts = () => {
     api.get("/products")
       .then(res => setProducts(res.data))
@@ -51,11 +47,7 @@ const loadOrder = () => {
   }
 
   useEffect(() => {
-    if (order?.id) {
-      loadItems(order.id);
-    } else {
-      setItems([]); // Limpiamos items si no hay orden
-    }
+    if (order?.id) loadItems(order.id);
   }, [order]);
 
   const loadItems = (orderId) => {
@@ -67,16 +59,12 @@ const loadOrder = () => {
   const openOrder = () => {
     api.post("/open_order", { table_id: id, status: 'open' })
       .then(() => loadOrder())
-      .catch(err => {
-        console.error("Error al abrir:", err);
-        alert("Error al abrir mesa");
-      });
+      .catch(err => alert("Error al abrir mesa"));
   }
 
   const addProduct = (productId) => {
-    // Verificación de seguridad
     if (!order?.id) {
-      alert("No hay una orden activa. Por favor, abre la mesa primero.");
+      alert("No hay una orden activa.");
       return;
     }
 
@@ -86,14 +74,10 @@ const loadOrder = () => {
       seat_id: activeSeat,
       quantity: 1
     })
-    .then(() => {
-      // Recargamos los items usando el ID que ya sabemos que es válido
-      loadItems(order.id);
-    })
+    .then(() => loadItems(order.id))
     .catch((err) => {
-      console.error("Error Supabase:", err.response?.data || err);
-      // Si el error es un 409 o 23503, es que la orden en el state es inválida
-      alert("Error: La orden no es válida. Recarga la página.");
+      console.error("Error al agregar:", err);
+      alert("Error al agregar producto.");
     });
   };
 
@@ -167,6 +151,7 @@ const loadOrder = () => {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Lado Izquierdo: Productos agrupados por Categoría */}
         <div className="w-2/3 p-6 overflow-y-auto">
           {Object.keys(groupedProducts).map(cat => (
             <div key={`cat-${cat}`} className="mb-8">
@@ -176,8 +161,12 @@ const loadOrder = () => {
                   <div 
                     key={`p-${p.id}`} 
                     onClick={() => p.stock > 0 && addProduct(p.id)} 
-                    className={`p-4 rounded-2xl border-2 transition-all active:scale-95 ${p.stock <= 0 ? 'bg-gray-800 opacity-50 cursor-not-allowed' : 'bg-gray-800 border-transparent hover:border-green-500 cursor-pointer'}`}
+                    className={`relative p-4 rounded-2xl border-2 transition-all active:scale-95 ${p.stock <= 0 ? 'bg-gray-800 opacity-50 cursor-not-allowed' : 'bg-gray-800 border-transparent hover:border-green-500 cursor-pointer'}`}
                   >
+                    {/* Badge de Stock */}
+                    <span className={`absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full ${p.stock > 5 ? 'bg-gray-700 text-gray-300' : 'bg-red-900 text-red-200'}`}>
+                      STOCK: {p.stock}
+                    </span>
                     <div className="font-bold text-xs mb-1 text-gray-400 uppercase">{p.name}</div>
                     <div className="text-green-400 font-black text-xl">${p.price.toLocaleString()}</div>
                   </div>
@@ -187,12 +176,24 @@ const loadOrder = () => {
           ))}
         </div>
 
+        {/* Lado Derecho: Detalle Cuenta (Agrupado por producto) */}
         <div className="w-1/3 bg-gray-950 p-6 border-l border-gray-800 flex flex-col">
           <h2 className="text-xl font-black mb-6">🧾 CUENTA</h2>
           <div className="flex-1 overflow-y-auto space-y-4">
             {seats.map(seatNum => {
                 const seatItems = items.filter(item => (item.seat_id || 1) === seatNum);
-                const seatTotal = seatItems.reduce((acc, i) => acc + (i.quantity * (i.products?.price || 0)), 0);
+                
+                // LÓGICA DE AGRUPACIÓN: Sumar productos iguales en la visual
+                const aggregatedItems = seatItems.reduce((acc, item) => {
+                  const pid = item.product_id;
+                  if (!acc[pid]) {
+                    acc[pid] = { ...item, displayQty: 0 };
+                  }
+                  acc[pid].displayQty += 1;
+                  return acc;
+                }, {});
+
+                const seatTotal = seatItems.reduce((acc, i) => acc + (1 * (i.products?.price || 0)), 0);
                 if (seatItems.length === 0 && seatNum !== activeSeat) return null;
 
                 return (
@@ -202,9 +203,12 @@ const loadOrder = () => {
                       <span className="font-black text-sm">${seatTotal.toLocaleString()}</span>
                     </div>
                     <div className="space-y-2">
-                      {seatItems.map(item => (
-                        <div key={`item-${item.id}`} className="flex justify-between items-center text-[11px] bg-black/40 p-3 rounded-xl group">
-                          <span className="font-bold uppercase">{item.products?.name || '...'}</span>
+                      {Object.values(aggregatedItems).map(item => (
+                        <div key={`item-agg-${item.id}`} className="flex justify-between items-center text-[11px] bg-black/40 p-3 rounded-xl group">
+                          <span className="font-bold uppercase">
+                            {item.displayQty > 1 && <span className="text-green-500 mr-2">{item.displayQty}x</span>}
+                            {item.products?.name || '...'}
+                          </span>
                           <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-all">
                             <button onClick={() => transferItem(item.id, seatNum)}>🔄</button>
                             <button onClick={() => removeItem(item.id)} className="text-red-500">❌</button>
