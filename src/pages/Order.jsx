@@ -13,6 +13,7 @@ export default function Order() {
   const [seats, setSeats] = useState([1]); 
   const [activeSeat, setActiveSeat] = useState(1); 
 
+  // AGRUPACIÓN POR CATEGORÍA
   const groupedProducts = products.reduce((acc, product) => {
     const categoryName = product.category ? product.category.trim() : "Otros";
     if (!acc[categoryName]) acc[categoryName] = [];
@@ -134,12 +135,13 @@ export default function Order() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col font-sans">
+      {/* Header */}
       <div className="bg-gray-950 p-4 flex justify-between items-center border-b border-gray-800">
         <h1 className="text-xl font-black text-green-400">🍺 Pub POS - Mesa {id}</h1>
         <div className="flex gap-2 items-center">
           {seats.map(s => (
             <button 
-              key={`seat-${s}`} 
+              key={`seat-btn-${s}`} 
               onClick={() => setActiveSeat(s)}
               className={`px-4 py-2 rounded-xl font-black transition-all ${activeSeat === s ? 'bg-green-500 text-black scale-110 shadow-lg' : 'bg-gray-800 text-gray-400'}`}
             >
@@ -151,23 +153,25 @@ export default function Order() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Lado Izquierdo: Productos agrupados por Categoría */}
+        {/* PANEL IZQUIERDO: PRODUCTOS POR CATEGORIA */}
         <div className="w-2/3 p-6 overflow-y-auto">
-          {Object.keys(groupedProducts).map(cat => (
-            <div key={`cat-${cat}`} className="mb-8">
-              <h2 className="text-xs font-black mb-4 text-green-500/50 uppercase tracking-widest border-b border-gray-800 pb-1">{cat}</h2>
+          {Object.keys(groupedProducts).map(category => (
+            <div key={`section-${category}`} className="mb-10">
+              <h2 className="text-sm font-black mb-4 text-green-500 uppercase tracking-[0.2em] border-b border-gray-800 pb-2">
+                {category}
+              </h2>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                {groupedProducts[cat].map(p => (
+                {groupedProducts[category].map(p => (
                   <div 
                     key={`p-${p.id}`} 
                     onClick={() => p.stock > 0 && addProduct(p.id)} 
-                    className={`relative p-4 rounded-2xl border-2 transition-all active:scale-95 ${p.stock <= 0 ? 'bg-gray-800 opacity-50 cursor-not-allowed' : 'bg-gray-800 border-transparent hover:border-green-500 cursor-pointer'}`}
+                    className={`relative p-4 rounded-2xl border-2 transition-all active:scale-95 ${p.stock <= 0 ? 'bg-gray-800 opacity-40 cursor-not-allowed' : 'bg-gray-800 border-transparent hover:border-green-500 cursor-pointer shadow-lg'}`}
                   >
                     {/* Badge de Stock */}
-                    <span className={`absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full ${p.stock > 5 ? 'bg-gray-700 text-gray-300' : 'bg-red-900 text-red-200'}`}>
-                      STOCK: {p.stock}
+                    <span className={`absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full ${p.stock > 5 ? 'bg-gray-700 text-gray-300' : 'bg-red-600 text-white animate-pulse'}`}>
+                      {p.stock <= 0 ? 'AGOTADO' : `STK: ${p.stock}`}
                     </span>
-                    <div className="font-bold text-xs mb-1 text-gray-400 uppercase">{p.name}</div>
+                    <div className="font-bold text-xs mb-1 text-gray-400 uppercase tracking-tight">{p.name}</div>
                     <div className="text-green-400 font-black text-xl">${p.price.toLocaleString()}</div>
                   </div>
                 ))}
@@ -176,14 +180,16 @@ export default function Order() {
           ))}
         </div>
 
-        {/* Lado Derecho: Detalle Cuenta (Agrupado por producto) */}
+        {/* PANEL DERECHO: CUENTA DETALLADA */}
         <div className="w-1/3 bg-gray-950 p-6 border-l border-gray-800 flex flex-col">
-          <h2 className="text-xl font-black mb-6">🧾 CUENTA</h2>
+          <h2 className="text-xl font-black mb-6 flex items-center gap-2">
+            <span>🧾</span> DETALLE POR PERSONA
+          </h2>
           <div className="flex-1 overflow-y-auto space-y-4">
             {seats.map(seatNum => {
                 const seatItems = items.filter(item => (item.seat_id || 1) === seatNum);
                 
-                // LÓGICA DE AGRUPACIÓN: Sumar productos iguales en la visual
+                // Agrupamos items por producto para sumar cantidades en la vista
                 const aggregatedItems = seatItems.reduce((acc, item) => {
                   const pid = item.product_id;
                   if (!acc[pid]) {
@@ -197,21 +203,21 @@ export default function Order() {
                 if (seatItems.length === 0 && seatNum !== activeSeat) return null;
 
                 return (
-                  <div key={`group-${seatNum}`} className={`p-4 rounded-2xl border ${activeSeat === seatNum ? 'border-green-500/50 bg-green-500/5' : 'border-gray-800 bg-gray-900/40'}`}>
+                  <div key={`seat-group-${seatNum}`} className={`p-4 rounded-2xl border transition-all ${activeSeat === seatNum ? 'border-green-500/50 bg-green-500/5 shadow-[0_0_15px_rgba(34,197,94,0.05)]' : 'border-gray-800 bg-gray-900/40'}`}>
                     <div className="flex justify-between items-center mb-3">
-                      <span className="font-black text-xs text-green-400">PERSONA #{seatNum}</span>
-                      <span className="font-black text-sm">${seatTotal.toLocaleString()}</span>
+                      <span className="font-black text-[10px] text-green-400 tracking-widest uppercase">Persona #{seatNum}</span>
+                      <span className="font-black text-sm text-white">${seatTotal.toLocaleString()}</span>
                     </div>
                     <div className="space-y-2">
                       {Object.values(aggregatedItems).map(item => (
-                        <div key={`item-agg-${item.id}`} className="flex justify-between items-center text-[11px] bg-black/40 p-3 rounded-xl group">
-                          <span className="font-bold uppercase">
-                            {item.displayQty > 1 && <span className="text-green-500 mr-2">{item.displayQty}x</span>}
-                            {item.products?.name || '...'}
+                        <div key={`item-row-${item.id}`} className="flex justify-between items-center text-[11px] bg-black/40 p-3 rounded-xl group border border-transparent hover:border-gray-700 transition-all">
+                          <span className="font-bold uppercase flex items-center">
+                            {item.displayQty > 1 && <span className="text-green-500 font-black mr-2 bg-green-500/10 px-1.5 py-0.5 rounded-md text-[9px]">{item.displayQty}x</span>}
+                            <span className="text-gray-200">{item.products?.name || '...'}</span>
                           </span>
                           <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-all">
-                            <button onClick={() => transferItem(item.id, seatNum)}>🔄</button>
-                            <button onClick={() => removeItem(item.id)} className="text-red-500">❌</button>
+                            <button title="Trasladar" onClick={() => transferItem(item.id, seatNum)} className="hover:scale-125 transition-transform">🔄</button>
+                            <button title="Eliminar" onClick={() => removeItem(item.id)} className="text-red-500 hover:scale-125 transition-transform">❌</button>
                           </div>
                         </div>
                       ))}
@@ -221,16 +227,21 @@ export default function Order() {
             })}
           </div>
 
+          {/* Footer Cuenta */}
           <div className="mt-6 pt-6 border-t border-gray-800">
             <div className="flex justify-between text-3xl font-black mb-6">
-              <span className="text-gray-500 text-sm self-center uppercase">Total</span>
-              <span className="text-green-400">${total.toLocaleString()}</span>
+              <span className="text-gray-500 text-xs self-center uppercase tracking-[0.3em]">Total</span>
+              <span className="text-green-400 drop-shadow-[0_0_10px_rgba(34,197,94,0.3)]">${total.toLocaleString()}</span>
             </div>
-            <button onClick={goToPayment} disabled={items.length === 0} className="w-full py-5 rounded-2xl bg-green-600 hover:bg-green-500 font-black text-lg disabled:opacity-20 shadow-lg">
-              IR A PAGAR
+            <button 
+              onClick={goToPayment} 
+              disabled={items.length === 0} 
+              className="w-full py-5 rounded-2xl bg-green-600 hover:bg-green-500 font-black text-lg disabled:opacity-20 shadow-lg transition-all active:scale-[0.98] uppercase tracking-tighter"
+            >
+              Ir a Pagar
             </button>
-            <button onClick={cancelOrder} className="w-full mt-4 text-[10px] text-red-500/50 uppercase font-bold tracking-widest">
-              Cancelar mesa
+            <button onClick={cancelOrder} className="w-full mt-4 text-[9px] text-red-500/40 hover:text-red-500 transition-colors uppercase font-bold tracking-widest">
+              Cancelar toda la mesa
             </button>
           </div>
         </div>
