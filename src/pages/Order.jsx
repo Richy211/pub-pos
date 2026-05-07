@@ -26,8 +26,9 @@ export default function Order() {
   }, [id]);
 
   const loadOrder = () => {
-    // Filtro estándar para buscar la mesa
-    api.get(`/open_order?table_id=eq.${id}`)
+    // CORREGIDO: Ahora filtramos por mesa Y que el estado sea 'open'
+    // Esto evita cargar IDs de órdenes viejas que ya no existen
+    api.get(`/open_order?table_id=eq.${id}&status=eq.open`)
       .then(res => {
         if (res.data && res.data.length > 0) {
           setOrder(res.data[0]);
@@ -48,11 +49,14 @@ export default function Order() {
   }
 
   useEffect(() => {
-    if (order?.id) loadItems(order.id);
+    if (order?.id) {
+      loadItems(order.id);
+    } else {
+      setItems([]); // Limpiamos items si no hay orden
+    }
   }, [order]);
 
   const loadItems = (orderId) => {
-    // JOIN crítico para traer nombres y precios de productos
     api.get(`/order_items?order_id=eq.${orderId}&select=*,products(*)`)
       .then(res => setItems(res.data || []))
       .catch(err => console.error("Error items", err));
@@ -61,61 +65,52 @@ export default function Order() {
   const openOrder = () => {
     api.post("/open_order", { table_id: id, status: 'open' })
       .then(() => loadOrder())
-      .catch(err => alert("Error al abrir mesa"));
+      .catch(err => {
+        console.error("Error al abrir:", err);
+        alert("Error al abrir mesa");
+      });
   }
 
   const addProduct = (productId) => {
-  // 1. Verificación extra: Si no hay orden o el ID es nulo, no disparamos la petición
-  if (!order || !order.id) {
-    alert("No hay una orden activa para esta mesa. Intenta abrir la mesa de nuevo.");
-    return;
-  }
-
-  api.post("/order_items", {
-    order_id: order.id,
-    product_id: productId,
-    seat_id: activeSeat,
-    quantity: 1
-  })
-  .then((res) => {
-    // 2. Opcional: Verifica que 'res' exista antes de llamar a loadItems
-    if (order?.id) {
-       loadItems(order.id);
+    // Verificación de seguridad
+    if (!order?.id) {
+      alert("No hay una orden activa. Por favor, abre la mesa primero.");
+      return;
     }
-  })
-  .catch((err) => {
-    console.error("Error detallado de Supabase:", err.response?.data || err);
-    alert("Error al agregar: La orden parece no existir en la base de datos.");
-  });
-};
- 
 
-  // CORREGIDO: Filtro en la URL para evitar el 405 Method Not Allowed
+    api.post("/order_items", {
+      order_id: order.id,
+      product_id: productId,
+      seat_id: activeSeat,
+      quantity: 1
+    })
+    .then(() => {
+      // Recargamos los items usando el ID que ya sabemos que es válido
+      loadItems(order.id);
+    })
+    .catch((err) => {
+      console.error("Error Supabase:", err.response?.data || err);
+      // Si el error es un 409 o 23503, es que la orden en el state es inválida
+      alert("Error: La orden no es válida. Recarga la página.");
+    });
+  };
+
   const removeItem = (itemId) => {
     if (!window.confirm("¿Quitar este producto?")) return;
     api.delete(`/order_items?id=eq.${itemId}`)
-      .then(() => {
-        loadItems(order.id);
-      })
-      .catch(err => {
-        console.error("Error al eliminar:", err);
-        alert("No se pudo eliminar");
-      });
+      .then(() => loadItems(order.id))
+      .catch(err => alert("No se pudo eliminar"));
   };
 
-  // CORREGIDO: PATCH con filtro en la URL para trasladar
   const transferItem = (itemId, currentSeat) => {
     const targetSeat = prompt("¿A qué persona mover?", currentSeat === 1 ? 2 : 1);
     if (targetSeat && !isNaN(targetSeat)) {
       api.patch(`/order_items?id=eq.${itemId}`, { seat_id: parseInt(targetSeat) })
-        .then(() => {
-          loadItems(order.id);
-        })
+        .then(() => loadItems(order.id))
         .catch(err => alert("Error al trasladar"));
     }
   };
 
-  // CORREGIDO: Delete con filtro en URL para cancelar
   const cancelOrder = () => {
     if (window.confirm("¿Cancelar TODA la orden?")) {
       api.delete(`/open_order?id=eq.${order.id}`)
@@ -170,7 +165,6 @@ export default function Order() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Productos */}
         <div className="w-2/3 p-6 overflow-y-auto">
           {Object.keys(groupedProducts).map(cat => (
             <div key={`cat-${cat}`} className="mb-8">
@@ -191,7 +185,6 @@ export default function Order() {
           ))}
         </div>
 
-        {/* Detalle Ticket */}
         <div className="w-1/3 bg-gray-950 p-6 border-l border-gray-800 flex flex-col">
           <h2 className="text-xl font-black mb-6">🧾 CUENTA</h2>
           <div className="flex-1 overflow-y-auto space-y-4">
