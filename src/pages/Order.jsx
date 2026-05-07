@@ -65,16 +65,30 @@ export default function Order() {
   }
 
   const addProduct = (productId) => {
-    if (!order?.id) return;
-    api.post("/order_items", { 
-        order_id: order.id, 
-        product_id: productId,
-        seat_id: activeSeat,
-        quantity: 1 
-      })
-      .then(() => loadItems(order.id))
-      .catch(err => alert("Error al agregar"));
-  };
+  // 1. Verificación extra: Si no hay orden o el ID es nulo, no disparamos la petición
+  if (!order || !order.id) {
+    alert("No hay una orden activa para esta mesa. Intenta abrir la mesa de nuevo.");
+    return;
+  }
+
+  api.post("/order_items", {
+    order_id: order.id,
+    product_id: productId,
+    seat_id: activeSeat,
+    quantity: 1
+  })
+  .then((res) => {
+    // 2. Opcional: Verifica que 'res' exista antes de llamar a loadItems
+    if (order?.id) {
+       loadItems(order.id);
+    }
+  })
+  .catch((err) => {
+    console.error("Error detallado de Supabase:", err.response?.data || err);
+    alert("Error al agregar: La orden parece no existir en la base de datos.");
+  });
+};
+ 
 
   // CORREGIDO: Filtro en la URL para evitar el 405 Method Not Allowed
   const removeItem = (itemId) => {
