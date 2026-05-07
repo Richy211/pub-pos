@@ -25,15 +25,15 @@ export default function Order() {
     loadProducts();
   }, [id]);
 
-  const loadOrder = () => {
-    // CORREGIDO: Ahora filtramos por mesa Y que el estado sea 'open'
-    // Esto evita cargar IDs de órdenes viejas que ya no existen
+const loadOrder = () => {
     api.get(`/open_order?table_id=eq.${id}&status=eq.open`)
       .then(res => {
+        // Si no hay resultados o la respuesta es vacía, limpiamos el estado sí o sí
         if (res.data && res.data.length > 0) {
           setOrder(res.data[0]);
         } else {
-          setOrder(null);
+          console.log("No se encontró orden abierta, limpiando...");
+          setOrder(null); // Esto hará que aparezca el botón "ABRIR MESA"
         }
       })
       .catch(err => {
@@ -41,6 +41,8 @@ export default function Order() {
         setOrder(null);
       });
   }
+
+
 
   const loadProducts = () => {
     api.get("/products")
