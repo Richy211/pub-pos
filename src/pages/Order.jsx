@@ -14,32 +14,32 @@ export default function Order() {
   const [activeSeat, setActiveSeat] = useState(1); 
 
   // AGRUPACIÓN POR CATEGORÍA
-  const groupedProducts = products.reduce((acc, product) => {
-    const categoryName = product.category ? product.category.trim() : "Otros";
-    if (!acc[categoryName]) acc[categoryName] = [];
-    acc[categoryName].push(product);
-    return acc;
-  }, {});
+const groupedProducts = products.reduce((acc, product) => {
+  const categoryName = product.category ? product.category.trim() : "Otros";
+  if (!acc[categoryName]) acc[categoryName] = [];
+  acc[categoryName].push(product);
+  return acc;
+}, {});
+
+// Ordenar las llaves del objeto (las categorías)
+const sortedCategories = Object.keys(groupedProducts).sort();
+
+
+
 
   useEffect(() => {
     loadOrder();
     loadProducts();
   }, [id]);
 
-  const loadOrder = () => {
-    api.get(`/open_order?table_id=eq.${id}&status=eq.open`)
-      .then(res => {
-        if (res.data && res.data.length > 0) {
-          setOrder(res.data[0]);
-        } else {
-          setOrder(null);
-        }
-      })
-      .catch(err => {
-        console.error("Error cargando orden", err);
-        setOrder(null);
-      });
-  }
+ // 1. Cargar la orden (Ruta corregida)
+const loadOrder = () => {
+  api.get(`/orders/table/${id}`) // Coincide con app.get("/api/orders/table/:tableId")
+    .then(res => {
+      setOrder(res.data); // res.data ya viene como objeto o null
+    })
+  // ... rest of catch
+}
 
   const loadProducts = () => {
     api.get("/products")
@@ -51,23 +51,34 @@ export default function Order() {
     if (order?.id) loadItems(order.id);
   }, [order]);
 
-  const loadItems = (orderId) => {
-    api.get(`/order_items?order_id=eq.${orderId}&select=*,products(*)`)
-      .then(res => setItems(res.data || []))
-      .catch(err => console.error("Error items", err));
-  }
+ // 2. Cargar items (Ruta corregida)
+const loadItems = (orderId) => {
+  api.get(`/order-items/${orderId}`) // Coincide con app.get("/api/order-items/:orderId")
+    .then(res => setItems(res.data || []))
+    .catch(err => console.error("Error items", err));
+}
 
-  const openOrder = () => {
-    api.post("/open_order", { table_id: id, status: 'open' })
-      .then(() => loadOrder())
-      .catch(err => alert("Error al abrir mesa"));
-  }
+// 3. Abrir mesa (Ruta corregida)
+const openOrder = () => {
+  api.post("/open-order", { table_id: id }) 
+    .then(() => loadOrder())
+    .catch(err => alert("Error al abrir mesa"));
+}
 
-  const addProduct = (productId) => {
-    if (!order?.id) {
-      alert("No hay una orden activa.");
-      return;
-    }
+// 4. Agregar producto (Elimina el 409)
+const addProduct = (productId) => {
+  if (!order?.id) return;
+
+  api.post("/order-items", {
+    order_id: order.id,
+    product_id: productId,
+    seat_id: activeSeat
+  })
+  .then(() => loadItems(order.id))
+  .catch(() => alert("Error al agregar producto."));
+};
+
+
 
     api.post("/order_items", {
       order_id: order.id,

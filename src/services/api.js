@@ -1,4 +1,4 @@
-import axios from "axios";
+/* import axios from "axios";
 
 const api = axios.create({
   // Prioridad: Variable de Netlify > URL directa de Supabase
@@ -20,4 +20,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export default api; */
+
+import axios from "axios";
+
+const api = axios.create({
+  // Apuntamos a tu servidor de Node en Maipú
+  baseURL: "http://localhost:5000/api" 
+});
+
+// Ya no necesitas interceptores de Supabase si usas tu propio backend
 export default api;
