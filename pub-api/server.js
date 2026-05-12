@@ -3,7 +3,14 @@ const cors = require("cors");
 const db = require("./config/db");
 
 const app = express();
-app.use(cors());
+
+// En tu server.js o donde tengas configurado Express
+const cors = require("cors");
+app.use(cors({
+  origin: "*", // Esto permite que cualquier dispositivo de tu red local se conecte
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+}));
+
 app.use(express.json());
 
 /* =============================================

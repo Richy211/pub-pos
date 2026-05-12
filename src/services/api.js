@@ -1,11 +1,15 @@
 import axios from "axios";
 
+/**
+ * RECUERDA: 
+ * Si usas 'localhost', solo funciona en TU PC.
+ * Para que tu hijo lo vea, reemplaza 'localhost' por tu IP (ej: 192.168.1.15).
+ */
 const api = axios.create({
-  // Si estamos en desarrollo usa localhost, si no, usa la URL de tu backend real
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+  baseURL: "http://192.168.0.7:5000/api" 
 });
 
-// Agregamos un interceptor por si acaso manejas tokens en el futuro
+// Interceptor para manejar el token (útil si luego agregas login)
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
