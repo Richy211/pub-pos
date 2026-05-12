@@ -1,4 +1,13 @@
-// ... (mismos imports de lucide-react y react-router-dom)
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Box, 
+  ShoppingCart, 
+  BarChart3, 
+  LogOut,
+  ClipboardList 
+} from "lucide-react"; 
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -7,20 +16,24 @@ export default function Sidebar() {
   const token = localStorage.getItem("token");
   let user = null;
 
-  try {
-    // Si hay token, intentamos parsear. Si falla, al menos no rompe el componente.
-    if (token) {
+  // Intentamos decodificar, pero si falla no rompemos la app
+  if (token && token.includes('.')) {
+    try {
       const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      user = JSON.parse(window.atob(base64));
+      if (base64Url) {
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        user = JSON.parse(window.atob(base64));
+      }
+    } catch (e) {
+      console.warn("Token mal formateado, ignorando...");
     }
-  } catch (e) {
-    console.error("Token no válido o inexistente");
   }
   
-  // PARCHE PROVISIONAL: Si estás en localhost, isAdmin será true siempre para que puedas trabajar
-  // En producción (Netlify), dependerá del token real.
-  const isAdmin = user?.role === 'admin' || window.location.hostname === 'localhost';
+  // Mientras estés en tu casa (localhost o IP), eres ADMIN por decreto
+  // Esto asegura que veas el menú completo pase lo que pase con el token
+  const isAdmin = user?.role === 'admin' || 
+                  window.location.hostname === 'localhost' || 
+                  window.location.hostname.startsWith('192.168.');
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -34,7 +47,11 @@ export default function Sidebar() {
 
   return (
     <div className="h-screen w-64 bg-gray-950 text-white flex flex-col p-4 border-r border-gray-800 shrink-0">
-      {/* ... (Logo PUB POS) */}
+      {/* HEADER LOGO */}
+      <div className="mb-10 mt-4 px-2">
+        <h2 className="text-3xl font-black text-green-500 tracking-tighter">PUB POS</h2>
+        <div className="h-1 w-12 bg-green-500 rounded-full mt-1"></div>
+      </div>
       
       <nav className="flex-1 space-y-2 overflow-y-auto">
         <p className="text-[10px] font-bold text-gray-600 uppercase ml-3 mb-1">Operaciones</p>
@@ -43,7 +60,7 @@ export default function Sidebar() {
           <LayoutDashboard size={20} /> <span className="font-medium">Mesas</span>
         </Link>
 
-        {/* Si isAdmin es true, mostramos el resto */}
+        {/* MENÚ DE ADMINISTRACIÓN (Protegido pero con bypass para local) */}
         {isAdmin && (
           <>
             <p className="text-[10px] font-bold text-gray-600 uppercase ml-3 mb-1 mt-6">Administración</p>
@@ -64,17 +81,8 @@ export default function Sidebar() {
               <ShoppingCart size={20} /> <span className="font-medium">Compras</span>
             </Link>
 
-            {/* Agregué el isActive a los que faltaban para que se vean verdes al pinchar */}
             <Link to="/cierre-diario" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/cierre-diario")}`}>
               <ClipboardList size={20} /> <span className="font-medium">Cierre Diario</span>
-            </Link>
-
-            <Link to="/cierre-fiscal" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/cierre-fiscal")}`}>
-              <span className="ml-1">⚖️</span> <span className="font-medium ml-2">Cierre Fiscal</span>
-            </Link>
-
-            <Link to="/arqueo" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/arqueo")}`}>
-              <span className="ml-1">💰</span> <span className="font-medium ml-2">Arqueo de Caja</span>
             </Link>
 
             <Link to="/users" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive("/users")}`}>
@@ -83,7 +91,16 @@ export default function Sidebar() {
           </>
         )}
       </nav>
-      {/* ... (Logout) */}
+
+      {/* BOTÓN CERRAR SESIÓN */}
+      <div className="border-t border-gray-800 pt-4 mt-auto">
+        <button 
+          onClick={handleLogout} 
+          className="w-full flex items-center gap-3 p-3 hover:bg-red-900/20 rounded-xl text-red-500 font-bold transition-all duration-200"
+        >
+          <LogOut size={20} /> Cerrar Sesión
+        </button>
+      </div>
     </div>
   );
 }
