@@ -5,9 +5,8 @@ const db = require("./config/db");
 const app = express();
 
 // En tu server.js o donde tengas configurado Express
-const cors = require("cors");
 app.use(cors({
-  origin: "*", // Esto permite que cualquier dispositivo de tu red local se conecte
+  origin: ["https://pub-pos-v1.netlify.app", "http://localhost:5173"], // Esto permite que cualquier dispositivo de tu red local se conecte
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
 }));
 
