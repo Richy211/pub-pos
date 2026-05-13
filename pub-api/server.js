@@ -69,6 +69,35 @@ app.get("/api/tables", async (req, res) => {
   } catch (err) { res.status(500).json([]); }
 });
 
+// Obtener orden activa de una mesa
+app.get("/api/orders/table/:tableId", async (req, res) => {
+  const { tableId } = req.params;
+  try {
+    const result = await db.query(
+      "SELECT * FROM orders WHERE table_id = $1 AND status = 'open' ORDER BY id DESC LIMIT 1",
+      [tableId]
+    );
+    res.json(result.rows[0] || null);
+  } catch (err) { res.status(500).json(null); }
+});
+
+// Obtener items de una orden
+app.get("/api/order-items/:orderId", async (req, res) => {
+  const { orderId } = req.params;
+  try {
+    const result = await db.query(`
+      SELECT oi.*, p.name 
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = $1`,
+      [orderId]
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json([]); }
+});
+
+
+
 // Abrir una nueva mesa
 app.post("/api/open-order", async (req, res) => {
   const { table_id } = req.body;
