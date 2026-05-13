@@ -1,25 +1,30 @@
 const { Pool } = require("pg");
+const dotenv = require("dotenv");
+
+// Forzamos la carga del .env en la carpeta pub-api
+dotenv.config();
 
 const db = new Pool({
-  host: process.env.DB_HOST || "tu-host-de-supabase.com", // El que te da Supabase
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "tu-password-segura",
-  database: process.env.DB_NAME || "postgres",
-  port: process.env.DB_PORT || 5432,
-  // CAMBIO CLAVE AQUÍ:
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: parseInt(process.env.DB_PORT || "5432"),
   ssl: {
-    rejectUnauthorized: false
-  }
+    rejectUnauthorized: false // Obligatorio para conectar con Supabase
+  },
+  connectionTimeoutMillis: 10000, 
 });
 
-// Verificar conexión
+// Verificación de conexión
 db.connect()
   .then(client => {
-    console.log("🚀 PostgreSQL (Supabase) conectado con éxito");
+    console.log("✅ PostgreSQL (Supabase) conectado con éxito en Maipú");
     client.release();
   })
   .catch(err => {
-    console.error("❌ Error de conexión DB:", err.message);
+    console.error("❌ Error de conexión:", err.message);
+    console.log("👉 Tip: Si sale 'ENOTFOUND', intenta reiniciar tu router de internet.");
   });
 
 module.exports = db;
