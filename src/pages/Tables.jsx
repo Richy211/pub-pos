@@ -10,7 +10,10 @@ export default function Tables() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.get("/tables").then(res => setTables(res.data)).catch(err => console.error(err));
+   api.get("/tables").then(res => {
+  console.log("DATA:", res.data);
+  setTables(Array.isArray(res.data) ? res.data : []);
+}).catch(err => console.error(err));
   }, []);
 
   useEffect(() => {

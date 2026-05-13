@@ -6,7 +6,7 @@ import axios from "axios";
  * Para que tu hijo lo vea, reemplaza 'localhost' por tu IP (ej: 192.168.1.15).
  */
 const api = axios.create({
-  baseURL: "http://192.168.0.7:5000/api" 
+baseURL: import.meta.env.VITE_API_URL + "/api"
 });
 
 // Interceptor para manejar el token (útil si luego agregas login)
