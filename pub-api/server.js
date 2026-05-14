@@ -197,12 +197,12 @@ router.get("/tables", async (req, res) => {
       SELECT 
         t.id, 
         t.number,
-        CASE WHEN o.id IS NOT NULL THEN 'occupied' ELSE 'available' END AS status,
+        CASE WHEN COUNT(o.id) > 0 THEN 'occupied' ELSE 'available' END AS status,
         COALESCE(SUM(oi.quantity * oi.price), 0) AS total
       FROM tables t
       LEFT JOIN orders o ON o.table_id = t.id AND o.status = 'open'
       LEFT JOIN order_items oi ON oi.order_id = o.id
-      GROUP BY t.id, t.number, o.id
+      GROUP BY t.id, t.number
       ORDER BY t.number ASC
     `);
     res.json(result.rows);
