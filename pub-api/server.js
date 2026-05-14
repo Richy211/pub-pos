@@ -9,9 +9,13 @@ const router = express.Router();
 const SECRET = "secreto_super_seguro";
 
 // --- Conexión PostgreSQL (Supabase) ---
-// Asegúrate de tener DATABASE_URL en tus variables de entorno en Render
+// Usa las variables de entorno separadas configuradas en Render
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
   ssl: { rejectUnauthorized: false } // Requerido por Supabase
 });
 
