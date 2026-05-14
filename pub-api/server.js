@@ -194,11 +194,15 @@ router.post("/orders/:id/cancel", async (req, res) => {
 router.get("/tables", async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT t.id, t.number,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM orders o WHERE o.table_id = t.id AND o.status = 'open'
-        ) THEN 'occupied' ELSE 'available' END AS status
+      SELECT 
+        t.id, 
+        t.number,
+        CASE WHEN o.id IS NOT NULL THEN 'occupied' ELSE 'available' END AS status,
+        COALESCE(SUM(oi.quantity * oi.price), 0) AS total
       FROM tables t
+      LEFT JOIN orders o ON o.table_id = t.id AND o.status = 'open'
+      LEFT JOIN order_items oi ON oi.order_id = o.id
+      GROUP BY t.id, t.number, o.id
       ORDER BY t.number ASC
     `);
     res.json(result.rows);

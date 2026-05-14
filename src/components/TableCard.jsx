@@ -22,9 +22,14 @@ const TableCard = ({ table, onClick }) => {
       <p className="mt-2 text-white/80">
         {isOccupied ? "Ocupada" : "Libre"}
       </p>
+
+      {isOccupied && table.total > 0 && (
+        <p className="mt-2 text-white font-black text-xl">
+          ${Number(table.total).toLocaleString("es-CL")}
+        </p>
+      )}
     </div>
   );
 };
-
 
 export default TableCard;
