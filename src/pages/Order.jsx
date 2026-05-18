@@ -96,9 +96,14 @@ export default function Order() {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
         <h2 className="text-2xl mb-6 font-bold uppercase tracking-tighter text-green-500">Mesa {id}</h2>
-        <button onClick={openOrder} className="bg-green-600 hover:bg-green-500 px-10 py-5 rounded-2xl font-black text-xl shadow-2xl transition-all active:scale-95">
-          ABRIR MESA
-        </button>
+        <div className="flex flex-col gap-4">
+          <button onClick={openOrder} className="bg-green-600 hover:bg-green-500 px-10 py-5 rounded-2xl font-black text-xl shadow-2xl transition-all active:scale-95">
+            ABRIR MESA
+          </button>
+          <button onClick={() => navigate("/mesas")} className="text-gray-400 hover:text-white font-bold text-sm tracking-wide uppercase transition-colors">
+            Volver al Panel
+          </button>
+        </div>
       </div>
     );
   }
@@ -185,18 +190,29 @@ export default function Order() {
             })}
           </div>
 
+          {/* TOTAL Y ACCIONES INFERIORES */}
           <div className="mt-6 pt-6 border-t border-gray-800">
             <div className="flex justify-between text-3xl font-black mb-6">
               <span className="text-gray-500 text-xs self-center uppercase tracking-[0.3em]">Total</span>
               <span className="text-green-400 drop-shadow-[0_0_10px_rgba(34,197,94,0.3)]">${total.toLocaleString()}</span>
             </div>
-            <button 
-              onClick={goToPayment} 
-              disabled={items.length === 0} 
-              className="w-full py-5 rounded-2xl bg-green-600 hover:bg-green-500 font-black text-lg disabled:opacity-20 shadow-lg transition-all active:scale-[0.98] uppercase tracking-tighter"
-            >
-              Ir a Pagar
-            </button>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => navigate("/mesas")} 
+                className="w-1/3 py-5 rounded-2xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-bold text-sm transition-all active:scale-[0.98] uppercase tracking-tighter border border-gray-800"
+              >
+                Volver
+              </button>
+              
+              <button 
+                onClick={goToPayment} 
+                disabled={items.length === 0} 
+                className="w-2/3 py-5 rounded-2xl bg-green-600 hover:bg-green-500 font-black text-lg disabled:opacity-20 shadow-lg transition-all active:scale-[0.98] uppercase tracking-tighter"
+              >
+                Ir a Pagar
+              </button>
+            </div>
           </div>
         </div>
       </div>
