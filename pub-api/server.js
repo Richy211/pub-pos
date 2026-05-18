@@ -1,3 +1,4 @@
+require("dotenv").config(); 
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
@@ -192,6 +193,9 @@ router.post("/orders/:id/cancel", async (req, res) => {
     TABLES & ORDERS
 ================================ */
 router.get("/tables", async (req, res) => {
+    console.log("DB_HOST:", process.env.DB_HOST);
+  console.log("DB_USER:", process.env.DB_USER);
+  console.log("DB_PORT:", process.env.DB_PORT);
   try {
     const result = await db.query(`
       SELECT 
@@ -207,6 +211,7 @@ router.get("/tables", async (req, res) => {
     `);
     res.json(result.rows);
   } catch (err) {
+    console.error("ERROR TABLES:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
