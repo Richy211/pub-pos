@@ -73,10 +73,26 @@ export default function Order() {
 
   const removeItem = (itemId) => {
     if (!window.confirm("¿Quitar este producto?")) return;
-    // Usamos la ruta genérica de items para borrar
     api.delete(`/order_items?id=eq.${itemId}`) 
       .then(() => loadItems(order.id))
       .catch(err => alert("No se pudo eliminar"));
+  };
+
+  // NUEVA FUNCIÓN: CANCELAR LA ORDEN COMPLETAMENTE
+  const cancelOrder = () => {
+    if (!order?.id) return;
+    
+    if (!window.confirm("¿Estás seguro de que deseas cancelar esta orden y volver?")) return;
+
+    // Ajusta esta ruta según cómo manejes la cancelación/borrado de órdenes en tu backend
+    api.delete(`/orders?id=eq.${order.id}`)
+      .then(() => {
+        navigate("/mesas");
+      })
+      .catch(err => {
+        console.error("Error al cancelar la orden", err);
+        alert("No se pudo cancelar la orden");
+      });
   };
 
   const addSeat = () => {
@@ -199,10 +215,10 @@ export default function Order() {
             
             <div className="flex gap-3">
               <button 
-                onClick={() => navigate("/mesas")} 
-                className="w-1/3 py-5 rounded-2xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-bold text-sm transition-all active:scale-[0.98] uppercase tracking-tighter border border-gray-800"
+                onClick={cancelOrder} 
+                className="w-1/3 py-5 rounded-2xl bg-red-950/40 hover:bg-red-900/40 text-red-400 font-bold text-sm transition-all active:scale-[0.98] uppercase tracking-tighter border border-red-900/50"
               >
-                Volver
+                Cancelar
               </button>
               
               <button 
