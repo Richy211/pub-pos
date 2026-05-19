@@ -363,8 +363,8 @@ router.post("/admin/compras-completas", async (req, res) => {
 
     for (const item of items) {
 await client.query(
-  "INSERT INTO compras_detalle (purchase_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)",
-  [purchaseId, item.product_id, item.quantity, item.price_unit]
+"INSERT INTO compras_detalle (purchase_id, product_id, quantity, unit_price_net, subtotal_net) VALUES ($1, $2, $3, $4, $5)",
+[purchaseId, item.product_id, item.quantity, item.price_unit, item.quantity * item.price_unit]
 );
       await client.query(
         "UPDATE products SET stock = stock + $1, cost = $2 WHERE id = $3",
@@ -385,7 +385,7 @@ await client.query(
 router.get("/admin/compras-detalle/:id", async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT ci.quantity, ci.price, p.name, (ci.quantity * ci.price) AS subtotal
+      SELECT ci.quantity, ci.unit_price_net AS price, p.name, ci.subtotal_net AS subtotal
       FROM compras_detalle ci
       INNER JOIN products p ON ci.product_id = p.id
       WHERE ci.purchase_id = $1
