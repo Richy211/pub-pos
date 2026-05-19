@@ -71,30 +71,26 @@ export default function Order() {
     .catch((err) => console.error("Error al agregar:", err));
   };
 
-  const removeItem = (itemId) => {
-    if (!window.confirm("¿Quitar este producto?")) return;
-    api.delete(`/order_items?id=eq.${itemId}`) 
-      .then(() => loadItems(order.id))
-      .catch(err => alert("No se pudo eliminar"));
-  };
+ const removeItem = (itemId) => {
+  if (!window.confirm("¿Quitar este producto?")) return;
+  api.delete(`/order-items/${itemId}`)
+    .then(() => loadItems(order.id))
+    .catch(err => alert("No se pudo eliminar"));
+};
 
-  // NUEVA FUNCIÓN: CANCELAR LA ORDEN COMPLETAMENTE
-  const cancelOrder = () => {
-    if (!order?.id) return;
-    
-    if (!window.confirm("¿Estás seguro de que deseas cancelar esta orden y volver?")) return;
+const cancelOrder = () => {
+  if (!order?.id) return;
+  if (!window.confirm("¿Estás seguro de que deseas cancelar esta orden y volver?")) return;
 
-    // Ajusta esta ruta según cómo manejes la cancelación/borrado de órdenes en tu backend
-    api.delete(`/orders?id=eq.${order.id}`)
-      .then(() => {
-        navigate("/mesas");
-      })
-      .catch(err => {
-        console.error("Error al cancelar la orden", err);
-        alert("No se pudo cancelar la orden");
-      });
-  };
+  api.post(`/orders/${order.id}/cancel`)
+    .then(() => navigate("/mesas"))
+    .catch(err => {
+      console.error("Error al cancelar la orden", err);
+      alert("No se pudo cancelar la orden");
+    });
+};
 
+ 
   const addSeat = () => {
     const nextSeat = seats.length + 1;
     setSeats([...seats, nextSeat]);
