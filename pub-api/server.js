@@ -413,22 +413,25 @@ router.get("/reportes/movimiento-productos", async (req, res) => {
     const result = await db.query(`
       SELECT
         p.id,
-        p.name AS "Producto",
-        p.stock AS "Stock_Actual",
+        p.name AS producto,
+        p.stock AS stock_actual,
         COALESCE((
           SELECT SUM(oi.quantity)
           FROM order_items oi
           JOIN orders o ON oi.order_id = o.id
           WHERE oi.product_id = p.id AND o.status = 'paid'
-        ), 0) AS "Total_Vendido"
+        ), 0) AS cantidad_ventas
       FROM products p
-      ORDER BY "Total_Vendido" DESC
+      ORDER BY cantidad_ventas DESC
     `);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
 
 router.get("/admin/reportes/movimiento-productos", async (req, res) => {
   try {
