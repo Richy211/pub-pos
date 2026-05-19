@@ -338,7 +338,7 @@ router.get("/admin/compras", async (req, res) => {
              STRING_AGG(prod.name, ', ') AS productos_comprados
       FROM compras c
       LEFT JOIN proveedores p ON c.proveedor_id = p.id
-      LEFT JOIN compras_items ci ON c.id = ci.purchase_id
+      LEFT JOIN compras_detalle ci ON c.id = ci.purchase_id
       LEFT JOIN products prod ON ci.product_id = prod.id
       GROUP BY c.id, c.date, c.total, p.nombre
       ORDER BY c.date DESC
