@@ -20,6 +20,9 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false } // Requerido por Supabase
 });
 
+const { emitirBoleta, DEMO_MODE } = require("./services/bsaleService");
+if (DEMO_MODE) console.log("⚠️  Bsale en MODO DEMO");
+
 // Helper para queries más limpias
 const db = {
   query: (text, params) => pool.query(text, params)
@@ -300,7 +303,7 @@ router.post("/order-items", async (req, res) => {
 });
 
 // Pagar orden
-router.post("/orders/:id/pay", async (req, res) => {
+/* router.post("/orders/:id/pay", async (req, res) => {
   const orderId = req.params.id;
   try {
     const totalResult = await db.query(
@@ -323,6 +326,63 @@ router.post("/orders/:id/pay", async (req, res) => {
     `, [orderId]);
 
     res.json({ message: "Orden pagada y total guardado", items: detalle.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+ */
+
+router.post("/orders/:id/pay", async (req, res) => {
+  const orderId = req.params.id;
+  try {
+    // 1. Calcular total de la orden
+    const totalResult = await db.query(
+      "SELECT SUM(quantity * price) AS total_calculado FROM order_items WHERE order_id = $1",
+      [orderId]
+    );
+    const total = parseFloat(totalResult.rows[0].total_calculado) || 0;
+
+    // 2. Obtener detalle de ítems (necesario para la boleta)
+    const detalleResult = await db.query(`
+      SELECT oi.quantity, p.name, oi.price, oi.seat_id,
+             (oi.quantity * oi.price) AS subtotal
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = $1
+    `, [orderId]);
+    const items = detalleResult.rows;
+
+    // 3. Emitir boleta electrónica en Bsale (o simular en DEMO)
+    let boleta = null;
+    try {
+      boleta = await emitirBoleta({ orderId: parseInt(orderId), items, total });
+      console.log(`✅ Boleta emitida (${boleta.modo}) #${boleta.numero} → orden ${orderId}`);
+    } catch (bsaleError) {
+      // ⚠️  Si Bsale falla, logueamos pero NO bloqueamos el cobro.
+      // En producción podrías querer hacer lo contrario según tu flujo.
+      console.error("⚠️  Error Bsale (pago igual registrado):", bsaleError.message);
+    }
+
+    // 4. Marcar la orden como pagada en la base de datos
+    await db.query(
+      "UPDATE orders SET status = 'paid', total = $1, paid_at = NOW() WHERE id = $2",
+      [total, orderId]
+    );
+
+    // 5. Respuesta al frontend con datos de boleta incluidos
+    res.json({
+      message    : "Orden pagada y boleta emitida",
+      items,
+      total,
+      boleta: boleta ? {
+        numero   : boleta.numero,
+        urlPdf   : boleta.urlPdf,
+        urlPublic: boleta.urlPublic,
+        modo     : boleta.modo,
+        mensaje  : boleta.mensaje || null
+      } : null
+    });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
